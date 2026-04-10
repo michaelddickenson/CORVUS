@@ -61,8 +61,6 @@ function CreateUserForm({ onCreated }: { onCreated: (u: AdminUser) => void }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const isLdap = false; // client doesn't know — show password field always; server ignores in LDAP mode
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");

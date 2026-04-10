@@ -22,7 +22,7 @@ interface LinkRow {
   note:      string | null;
 }
 
-export function CaseLinkSection({ caseId, currentCaseUuid }: { caseId: string; currentCaseUuid: string }) {
+export function CaseLinkSection({ caseId: _caseId, currentCaseUuid }: { caseId: string; currentCaseUuid: string }) {
   const [links,  setLinks]  = useState<LinkRow[]>([]);
   const [loaded, setLoaded] = useState(false);
 

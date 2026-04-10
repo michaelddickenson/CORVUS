@@ -9,7 +9,7 @@ import { CatBadge } from "@/components/ui/CatBadge";
 import { ImpactBadge } from "@/components/ui/ImpactBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
-  CAT_LABEL, CAT_WIDGET_STYLE,
+  CAT_WIDGET_STYLE,
   IMPACT_WIDGET_STYLE,
   ALL_CATS, ALL_IMPACTS,
 } from "@/lib/catDisplay";
@@ -112,7 +112,6 @@ export default async function DashboardPage({
       const total = closedCases.reduce((s, c) => s + c.closedAt!.getTime() - c.createdAt.getTime(), 0);
       mttc = Math.round((total / closedCases.length / 3_600_000) * 10) / 10;
     }
-    const closedIds = closedCases.map((c) => c.id);
     const scopedIds = await prisma.case.findMany({ where: scopedWhere, select: { id: true, createdAt: true } });
     const createdMap = new Map(scopedIds.map((c) => [c.id, c.createdAt]));
     const allScopedIds = scopedIds.map((c) => c.id);

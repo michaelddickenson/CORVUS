@@ -1,5 +1,4 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 
 /**
  * Generates the next DCO-YYYY-NNNN case ID inside a serializable transaction.
