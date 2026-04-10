@@ -17,6 +17,7 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "CORVUS",
   description: "Cyber Operations | Case Management",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({

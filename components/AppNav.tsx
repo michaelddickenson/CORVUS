@@ -25,10 +25,10 @@ function IconFolder({ className }: { className?: string }) {
   );
 }
 
-function IconShield({ className }: { className?: string }) {
+function IconRaven({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M22 9.5 L17.5 7.5 C16 5.5 13.5 4.5 11.5 5.5 C9.5 6.5 8.5 8.5 7.5 11 C6.5 13 5.5 15.5 5 17 L4 20 L7 21.5 C8.5 21 10 20 11.5 19 C13.5 18 16 16 18 13.5 C19.5 12 20 11 19.5 10.5 Z" />
     </svg>
   );
 }
@@ -301,13 +301,10 @@ export function AppSidebar({ unreadCount = 0 }: { unreadCount?: number }) {
         {/* Logo */}
         <div className={`border-b border-neutral-800 flex items-center gap-2.5 h-14 flex-shrink-0 ${collapsed ? "px-3 justify-center" : "px-4"}`}>
           <div className="w-7 h-7 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
-            <IconShield className="w-4 h-4 text-white" />
+            <IconRaven className="w-4 h-4 text-white" />
           </div>
           {!collapsed && (
-            <div className="min-w-0">
-              <p className="text-white text-sm font-semibold leading-tight truncate">CORVUS</p>
-              <p className="text-neutral-500 text-xs leading-tight">Cyber Operations | Case Mgmt</p>
-            </div>
+            <p className="text-white text-sm font-semibold leading-tight truncate">CORVUS</p>
           )}
         </div>
 
