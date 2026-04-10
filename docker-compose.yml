@@ -1,0 +1,89 @@
+# =============================================================================
+# DCO Case Management System — Docker Compose (production)
+# =============================================================================
+# Copy docker/.env.example to .env in this directory and fill in all values
+# before running `docker compose up -d`.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # db — PostgreSQL 15 with named volume and role initialization
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dco_owner          # Superuser / migration role
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD}
+      POSTGRES_DB: dco_cms
+      # Passed to init.sh so it can create dco_app with the correct password
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+    volumes:
+      - dco_postgres_data:/var/lib/postgresql/data
+      # init.sh runs once on first container start; subsequent starts skip it
+      - ./docker/init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dco_owner -d dco_cms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # migrate — one-shot service: applies migrations and seeds the admin user
+  # Exits with code 0 on success; compose waits for it before starting app.
+  # Uses DATABASE_URL (dco_owner) so it has full DDL privileges.
+  # ---------------------------------------------------------------------------
+  migrate:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME}
+      # Only required in credential/demo mode (ENABLE_CREDENTIAL_AUTH=true)
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      ENABLE_CREDENTIAL_AUTH: ${ENABLE_CREDENTIAL_AUTH:-}
+    command: >
+      sh -c "npx prisma migrate deploy && npx prisma db seed"
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # app — Next.js production server
+  # Uses APP_DATABASE_URL (dco_app) — restricted runtime role.
+  # Starts only after migrate exits successfully.
+  # ---------------------------------------------------------------------------
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "3000:3000"
+    environment:
+      # Remap DATABASE_URL to the restricted dco_app role for runtime
+      DATABASE_URL: ${APP_DATABASE_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      UPLOAD_DIR: /app/uploads
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-50}
+      APP_VERSION: ${APP_VERSION:-}
+      # LDAP — leave blank if using credential auth (demo only)
+      LDAP_URI: ${LDAP_URI:-}
+      LDAP_BASE_DN: ${LDAP_BASE_DN:-}
+      LDAP_BIND_DN: ${LDAP_BIND_DN:-}
+      LDAP_BIND_PASSWORD: ${LDAP_BIND_PASSWORD:-}
+      # Credential auth — DO NOT enable in production LDAP deployments
+      ENABLE_CREDENTIAL_AUTH: ${ENABLE_CREDENTIAL_AUTH:-}
+      NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-}
+    volumes:
+      # Artifact uploads — back up this directory alongside the DB volume
+      - ./uploads:/app/uploads
+
+volumes:
+  dco_postgres_data:
+    name: dco_postgres_data

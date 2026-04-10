@@ -1,0 +1,444 @@
+// DCO Case Management System — Prisma Schema
+// Single source of truth for the database.
+// NEVER manually edit migration files — use `prisma migrate dev`.
+
+// Prisma 7: generator uses "prisma-client-js", url lives in prisma.config.ts
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums — must match CLAUDE.md exactly
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  SOC_ANALYST
+  IR_ANALYST
+  MALWARE_ANALYST
+  CTI_ANALYST
+  COUNTERMEASURES
+  TEAM_LEAD
+}
+
+enum Team {
+  SOC
+  IR
+  MALWARE
+  CTI
+  COUNTERMEASURES
+}
+
+enum Status {
+  NEW
+  IN_PROGRESS
+  PENDING_REVIEW
+  CLOSED
+  // TRIAGED removed — flow: NEW → IN_PROGRESS → PENDING_REVIEW → CLOSED
+  // ARCHIVED is explicitly forbidden — do not add it
+}
+
+// Replaces Severity — NIST/DCO incident categorization
+enum IncidentCat {
+  CAT_1
+  CAT_2
+  CAT_3
+  CAT_4
+  CAT_5
+  CAT_6
+  CAT_7
+  CAT_8
+  CAT_9
+}
+
+// Impact severity level (orthogonal to category)
+enum ImpactLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Category {
+  MALWARE
+  INTRUSION
+  PHISHING
+  INSIDER_THREAT
+  NONCOMPLIANCE
+  VULNERABILITY
+  ANOMALOUS_ACTIVITY
+  OTHER
+}
+
+enum TLP {
+  WHITE
+  GREEN
+  AMBER
+  RED
+}
+
+// OQ-002 resolved: AssetImpact added in Phase 4
+enum AssetImpact {
+  CONFIRMED   // asset is confirmed compromised
+  SUSPECTED   // suspected but not confirmed
+  CLEARED     // investigated and cleared
+}
+
+enum IocType {
+  IP
+  DOMAIN
+  URL
+  MD5
+  SHA1
+  SHA256
+  EMAIL
+  FILE_PATH
+  REGISTRY_KEY
+  YARA_RULE
+  OTHER
+}
+
+enum EntryType {
+  NOTE
+  STATUS_CHANGE
+  ESCALATION
+  ASSIGNMENT
+  EVIDENCE_ADDED
+  IOC_ADDED
+  TTP_TAGGED
+  SIGNATURE_CREATED
+  DISPOSITION_SET
+  FIELD_EDIT
+  CORRECTION
+  RETURNED
+}
+
+enum TeamStatus {
+  ACTIVE
+  PENDING
+  COMPLETE
+  RETURNED
+}
+
+enum AttackVector {
+  PHISHING
+  REMOVABLE_MEDIA
+  WEB_APPLICATION
+  SUPPLY_CHAIN
+  INSIDER
+  CREDENTIAL_COMPROMISE
+  PHYSICAL
+  UNKNOWN
+  OTHER
+}
+
+enum MissionImpact {
+  NONE
+  DEGRADED
+  MISSION_FAILURE
+  UNKNOWN
+}
+
+// ---------------------------------------------------------------------------
+// User
+// ---------------------------------------------------------------------------
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  // password is null in LDAP deployments — AD owns the credential
+  password  String?
+  role      Role     @default(SOC_ANALYST)
+  team      Team?
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  casesCreated     Case[]           @relation("CaseCreator")
+  casesAssigned    Case[]           @relation("CaseAssignee")
+  caseEntries      CaseEntry[]
+  notifications    Notification[]   @relation("UserNotifications")
+  auditLogs        AuditLog[]
+  teamStatusEdits  CaseTeamStatus[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Case
+// ---------------------------------------------------------------------------
+
+model Case {
+  id          String      @id @default(uuid())
+  // Human-readable ID: DCO-YYYY-NNNN — separate indexed field
+  caseId      String      @unique
+  title       String
+  description String      @db.Text
+  status      Status      @default(NEW)
+  cat         IncidentCat @default(CAT_8)
+  impactLevel ImpactLevel @default(LOW)
+  category    Category
+  tlp         TLP         @default(GREEN)
+
+  createdById String
+  createdBy   User        @relation("CaseCreator", fields: [createdById], references: [id])
+
+  assignedToId String?
+  assignedTo   User?      @relation("CaseAssignee", fields: [assignedToId], references: [id])
+
+  // Teams currently contributing to this case
+  teamsInvolved Team[]
+
+  // Classification custom label — overrides TLP enum display name when set
+  classificationCustom String?
+
+  // Incident timeline / detail fields
+  incidentStartedAt   DateTime?
+  incidentEndedAt     DateTime?
+  incidentDetectedAt  DateTime?
+  incidentReportedAt  DateTime?
+  detectionSource     String?
+  attackVector        AttackVector?
+  affectedNetwork     String?
+  missionImpact       MissionImpact?
+  reportingRequired   Boolean   @default(false)
+  externalTicketId    String?
+
+  // BLUF / Summary fields (v2)
+  blufSummary        String?  @db.Text
+  recommendedActions String?  @db.Text
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  closedAt  DateTime?
+
+  // Relations
+  entries       CaseEntry[]
+  iocs          Ioc[]
+  assets        Asset[]
+  ttps          Ttp[]
+  artifacts     Artifact[]
+  notifications Notification[]
+  linkedFrom    CaseLink[]        @relation("LinkSource")
+  linkedTo      CaseLink[]        @relation("LinkTarget")
+  teamStatuses  CaseTeamStatus[]
+
+  @@index([caseId])
+  @@index([status])
+  @@index([cat])
+  @@index([tlp])
+  @@index([createdAt])
+  @@map("cases")
+}
+
+// ---------------------------------------------------------------------------
+// CaseEntry (timeline — append-only, no DELETE or PATCH endpoint)
+// ---------------------------------------------------------------------------
+
+model CaseEntry {
+  id         String    @id @default(uuid())
+  caseId     String
+  case       Case      @relation(fields: [caseId], references: [id])
+
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id])
+  authorTeam Team
+
+  entryType  EntryType
+  body       String    @db.Text
+  // For CORRECTION entries — references the original entry being corrected
+  corrects   String?
+
+  createdAt  DateTime  @default(now())
+
+  @@index([caseId, createdAt])
+  @@map("case_entries")
+}
+
+// ---------------------------------------------------------------------------
+// IOC
+// ---------------------------------------------------------------------------
+
+model Ioc {
+  id          String  @id @default(uuid())
+  caseId      String
+  case        Case    @relation(fields: [caseId], references: [id])
+
+  type        IocType
+  value       String
+  description String? @db.Text
+  confidence  Int     @default(50) // 0–100
+  tlp         TLP     @default(GREEN)
+
+  addedById String
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([value]) // for collision check across cases
+  @@map("iocs")
+}
+
+// ---------------------------------------------------------------------------
+// Asset
+// ---------------------------------------------------------------------------
+
+model Asset {
+  id          String  @id @default(uuid())
+  caseId      String
+  case        Case    @relation(fields: [caseId], references: [id])
+
+  hostname    String?
+  ipAddress   String?
+  macAddress  String?
+  os          String?
+  assetType   String?         // e.g. "Workstation", "Server", "Network Device"
+  impact      AssetImpact     @default(SUSPECTED)
+  owner       String?
+  description String?         @db.Text
+
+  addedById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@map("assets")
+}
+
+// ---------------------------------------------------------------------------
+// TTP (MITRE ATT&CK)
+// ---------------------------------------------------------------------------
+
+model Ttp {
+  id            String  @id @default(uuid())
+  caseId        String
+  case          Case    @relation(fields: [caseId], references: [id])
+
+  techniqueId   String // e.g. T1059.001
+  techniqueName String
+  tactic        String
+  description   String? @db.Text
+
+  addedById String
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([techniqueId])
+  @@map("ttps")
+}
+
+// ---------------------------------------------------------------------------
+// Artifact (file attachments — stored outside web root)
+// ---------------------------------------------------------------------------
+
+model Artifact {
+  id          String  @id @default(uuid())
+  caseId      String
+  case        Case    @relation(fields: [caseId], references: [id])
+
+  filename    String // original filename
+  storedPath  String // server-side path outside web root
+  mimeType    String
+  sizeBytes   Int
+  sha256      String // verified server-side after upload
+  description String? @db.Text
+
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  @@index([caseId])
+  @@map("artifacts")
+}
+
+// ---------------------------------------------------------------------------
+// AuditLog (append-only — DB user has no UPDATE or DELETE privilege)
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+
+  action     String  // e.g. "USER_CREATED", "USER_ROLE_CHANGED"
+  targetType String? // e.g. "User"
+  targetId   String?
+  detail     Json?   // structured before/after snapshot
+  ipAddress  String? // request IP for admin actions
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Notification
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id           String   @id @default(uuid())
+  caseId       String
+  case         Case     @relation(fields: [caseId], references: [id])
+
+  targetTeam   Team
+  // null = entire team; set to target a specific user
+  targetUserId String?
+  targetUser   User?    @relation("UserNotifications", fields: [targetUserId], references: [id])
+
+  message   String
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([targetTeam, isRead])
+  @@index([targetUserId, isRead])
+  @@index([caseId])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// CaseLink (many-to-many case cross-references)
+// ---------------------------------------------------------------------------
+
+model CaseLink {
+  id           String @id @default(uuid())
+  sourceCaseId String
+  sourceCase   Case   @relation("LinkSource", fields: [sourceCaseId], references: [id])
+  targetCaseId String
+  targetCase   Case   @relation("LinkTarget", fields: [targetCaseId], references: [id])
+  note         String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([sourceCaseId, targetCaseId])
+  @@map("case_links")
+}
+
+// ---------------------------------------------------------------------------
+// CaseTeamStatus — per-team workflow status on a case (v2)
+// ---------------------------------------------------------------------------
+model CaseTeamStatus {
+  id          String     @id @default(uuid())
+  caseId      String
+  case        Case       @relation(fields: [caseId], references: [id])
+
+  team        Team
+  status      TeamStatus
+
+  updatedAt   DateTime   @updatedAt
+  updatedById String
+  updatedBy   User       @relation(fields: [updatedById], references: [id])
+
+  @@unique([caseId, team])
+  @@index([caseId])
+  @@map("case_team_statuses")
+}

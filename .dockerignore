@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+.env.*
+node_modules
+.next
+uploads
+docker/init.sh
+DEPLOYMENT.md
+*.md
