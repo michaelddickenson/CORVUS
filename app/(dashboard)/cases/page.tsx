@@ -1,9 +1,14 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { CaseQueue } from "@/components/cases/CaseQueue";
 
 export const metadata = { title: "Cases — CORVUS" };
 
-export default function CasesPage() {
+export default async function CasesPage() {
+  const session = await getServerSession(authOptions);
+  const canCreate = session?.user?.role !== "OBSERVER";
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -13,12 +18,14 @@ export default function CasesPage() {
             All cases across all teams.
           </p>
         </div>
-        <Link
-          href="/cases/new"
-          className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded px-4 py-2 transition-colors"
-        >
-          New Case
-        </Link>
+        {canCreate && (
+          <Link
+            href="/cases/new"
+            className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded px-4 py-2 transition-colors"
+          >
+            New Case
+          </Link>
+        )}
       </div>
 
       <CaseQueue />

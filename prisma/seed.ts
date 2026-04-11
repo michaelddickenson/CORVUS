@@ -23,7 +23,7 @@ import {
   TLP,
   ImpactLevel,
   IncidentCat,
-  Category,
+  IncidentSource,
   EntryType,
   IocType,
   AssetImpact,
@@ -210,7 +210,8 @@ interface CaseSeedDef {
   description: string;
   cat: IncidentCat;
   impactLevel: ImpactLevel;
-  category: Category;
+  incidentSource: IncidentSource;
+  incidentSourceCustom?: string;
   status: Status;
   tlp: TLP;
   classificationCustom?: string;
@@ -248,7 +249,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Log correlation confirmed credential theft via spear-phishing email. Lateral movement to three servers observed.",
       cat: IncidentCat.CAT_1,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.INTRUSION,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.CLOSED,
       tlp: TLP.RED,
       assigneeEmail: "ir1@demo.local",
@@ -301,7 +302,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Account used for unauthorized email forwarding rule and SharePoint access within 20 minutes of compromise.",
       cat: IncidentCat.CAT_2,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.PHISHING,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.CLOSED,
       tlp: TLP.AMBER,
       assigneeEmail: "soc1@demo.local",
@@ -345,7 +346,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "block of IP addresses. ~4,200 attempts over 6 hours. No successful authentication.",
       cat: IncidentCat.CAT_3,
       impactLevel: ImpactLevel.LOW,
-      category: Category.INTRUSION,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.NEW,
       tlp: TLP.GREEN,
       assigneeEmail: "soc1@demo.local",
@@ -378,7 +379,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Services degraded for 47 minutes before upstream scrubbing engaged. Attack continues in low-bandwidth probing phase.",
       cat: IncidentCat.CAT_4,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.OTHER,
+      incidentSource: IncidentSource.OTHER,
       status: Status.IN_PROGRESS,
       tlp: TLP.AMBER,
       classificationCustom: "Special Handling",
@@ -421,7 +422,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Device belongs to contractor. No data exfiltration confirmed but investigation ongoing.",
       cat: IncidentCat.CAT_5,
       impactLevel: ImpactLevel.LOW,
-      category: Category.NONCOMPLIANCE,
+      incidentSource: IncidentSource.OTHER,
       status: Status.IN_PROGRESS,
       tlp: TLP.GREEN,
       assigneeEmail: "soc1@demo.local",
@@ -454,7 +455,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Multiple scanning tools fingerprinted. Attribution to automated vulnerability scanner operated by unknown third party.",
       cat: IncidentCat.CAT_6,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.INTRUSION,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.PENDING_REVIEW,
       tlp: TLP.GREEN,
       assigneeEmail: "cti1@demo.local",
@@ -490,7 +491,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "DNS beaconing to known CS malleable C2 profile. Host isolated. Full triage in progress.",
       cat: IncidentCat.CAT_7,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.MALWARE,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.IN_PROGRESS,
       tlp: TLP.RED,
       assigneeEmail: "mal1@demo.local",
@@ -530,7 +531,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Lateral tool transfer suspected but not confirmed. Investigation in progress.",
       cat: IncidentCat.CAT_8,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.ANOMALOUS_ACTIVITY,
+      incidentSource: IncidentSource.UNKNOWN,
       status: Status.IN_PROGRESS,
       tlp: TLP.AMBER,
       assigneeEmail: "ir1@demo.local",
@@ -566,7 +567,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "NTLM hashes extracted from prior compromise (see linked case). Privilege escalation to DA attempted.",
       cat: IncidentCat.CAT_1,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.INTRUSION,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.PENDING_REVIEW,
       tlp: TLP.AMBER,
       assigneeEmail: "ir1@demo.local",
@@ -603,7 +604,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "and staged archive in C:\\ProgramData\\backup.zip. Attack interrupted before encryption.",
       cat: IncidentCat.CAT_7,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.MALWARE,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.CLOSED,
       tlp: TLP.AMBER,
       assigneeEmail: "mal1@demo.local",
@@ -645,7 +646,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Over 4,000 files accessed in 90 minutes. HR and Legal notified.",
       cat: IncidentCat.CAT_2,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.INSIDER_THREAT,
+      incidentSource: IncidentSource.INSIDER_THREAT,
       status: Status.IN_PROGRESS,
       tlp: TLP.GREEN,
       assigneeEmail: "soc1@demo.local",
@@ -680,7 +681,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Scan pattern shifted to target OT-adjacent services (Modbus 502, BACnet 47808). Under investigation.",
       cat: IncidentCat.CAT_6,
       impactLevel: ImpactLevel.LOW,
-      category: Category.INTRUSION,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.IN_PROGRESS,
       tlp: TLP.GREEN,
       assigneeEmail: "soc1@demo.local",
@@ -714,7 +715,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Public-facing API gateway experienced 94% error rate for 31 minutes before rule correction.",
       cat: IncidentCat.CAT_4,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.OTHER,
+      incidentSource: IncidentSource.OTHER,
       status: Status.CLOSED,
       tlp: TLP.GREEN,
       assigneeEmail: "cm1@demo.local",
@@ -758,7 +759,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Actor pivoted to credential storage server within 4 hours of initial access. Linked to prior TEMP.Veles-attributed case.",
       cat: IncidentCat.CAT_1,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.INTRUSION,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.CLOSED,
       tlp: TLP.RED,
       assigneeEmail: "ir1@demo.local",
@@ -809,7 +810,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Encryption confirmed on 3 hosts before EDR containment. Linked to prior Cobalt Strike beacon case (same C2 infrastructure).",
       cat: IncidentCat.CAT_7,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.MALWARE,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.CLOSED,
       tlp: TLP.AMBER,
       assigneeEmail: "ir1@demo.local",
@@ -863,7 +864,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Application obtained read/write access to mailboxes and OneDrive. SOC and IR both actively investigating scope.",
       cat: IncidentCat.CAT_2,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.PHISHING,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.IN_PROGRESS,
       tlp: TLP.AMBER,
       assigneeEmail: "ir1@demo.local",
@@ -903,7 +904,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "CTI actively profiling the actor infrastructure.",
       cat: IncidentCat.CAT_6,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.INTRUSION,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.IN_PROGRESS,
       tlp: TLP.GREEN,
       classificationCustom: "Custom Label A",
@@ -952,7 +953,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Pattern consistent with Kerberoasting — offline hash cracking of service account credentials.",
       cat: IncidentCat.CAT_1,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.INTRUSION,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.PENDING_REVIEW,
       tlp: TLP.AMBER,
       assigneeEmail: "ir1@demo.local",
@@ -988,7 +989,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Traffic for the affected prefix was rerouted for approximately 8 minutes before the advertisement was withdrawn.",
       cat: IncidentCat.CAT_4,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.OTHER,
+      incidentSource: IncidentSource.OTHER,
       status: Status.NEW,
       tlp: TLP.GREEN,
       assigneeEmail: "soc1@demo.local",
@@ -1020,7 +1021,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Likely entry via exposed debug port. Instances terminated and replaced. Scope investigation ongoing.",
       cat: IncidentCat.CAT_7,
       impactLevel: ImpactLevel.LOW,
-      category: Category.MALWARE,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.IN_PROGRESS,
       tlp: TLP.GREEN,
       assigneeEmail: "ir1@demo.local",
@@ -1058,7 +1059,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Encryption confirmed on 12 hosts. Recovery from backups completed. Attribution to criminal affiliate group.",
       cat: IncidentCat.CAT_2,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.MALWARE,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.CLOSED,
       tlp: TLP.RED,
       assigneeEmail: "ir1@demo.local",
@@ -1101,7 +1102,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Three accounts compromised. Credential harvesting and email access confirmed.",
       cat: IncidentCat.CAT_1,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.PHISHING,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.CLOSED,
       tlp: TLP.AMBER,
       assigneeEmail: "ir1@demo.local",
@@ -1144,7 +1145,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "No exploitation confirmed. Configuration corrected within 4 hours of detection.",
       cat: IncidentCat.CAT_4,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.NONCOMPLIANCE,
+      incidentSource: IncidentSource.OTHER,
       status: Status.CLOSED,
       tlp: TLP.GREEN,
       assigneeEmail: "cm1@demo.local",
@@ -1181,7 +1182,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Likely introduced via malicious npm package. Host reimaged. No lateral movement.",
       cat: IncidentCat.CAT_7,
       impactLevel: ImpactLevel.LOW,
-      category: Category.MALWARE,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.CLOSED,
       tlp: TLP.GREEN,
       assigneeEmail: "soc1@demo.local",
@@ -1220,7 +1221,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Persistent access confirmed on three hosts. Ongoing investigation and containment.",
       cat: IncidentCat.CAT_1,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.INTRUSION,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.IN_PROGRESS,
       tlp: TLP.RED,
       assigneeEmail: "ir1@demo.local",
@@ -1265,7 +1266,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Fraudulent wire transfer request intercepted before processing. Account investigation ongoing.",
       cat: IncidentCat.CAT_2,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.PHISHING,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.IN_PROGRESS,
       tlp: TLP.AMBER,
       assigneeEmail: "soc1@demo.local",
@@ -1301,7 +1302,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Patch applied. Verification scan pending.",
       cat: IncidentCat.CAT_6,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.VULNERABILITY,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.PENDING_REVIEW,
       tlp: TLP.GREEN,
       assigneeEmail: "soc1@demo.local",
@@ -1336,7 +1337,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Device physically located and removed. Network access logs under review.",
       cat: IncidentCat.CAT_3,
       impactLevel: ImpactLevel.LOW,
-      category: Category.NONCOMPLIANCE,
+      incidentSource: IncidentSource.OTHER,
       status: Status.IN_PROGRESS,
       tlp: TLP.GREEN,
       assigneeEmail: "soc1@demo.local",
@@ -1372,7 +1373,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "Pattern consistent with active lateral movement within Active Directory environment.",
       cat: IncidentCat.CAT_1,
       impactLevel: ImpactLevel.HIGH,
-      category: Category.INTRUSION,
+      incidentSource: IncidentSource.EXTERNAL_THREAT,
       status: Status.NEW,
       tlp: TLP.AMBER,
       assigneeEmail: "ir2@demo.local",
@@ -1409,7 +1410,7 @@ function buildCases(u: Record<string, string>): CaseSeedDef[] {
         "High-frequency queries to uncommon TLDs suggestive of DNS tunneling or C2 beaconing.",
       cat: IncidentCat.CAT_2,
       impactLevel: ImpactLevel.MEDIUM,
-      category: Category.ANOMALOUS_ACTIVITY,
+      incidentSource: IncidentSource.UNKNOWN,
       status: Status.NEW,
       tlp: TLP.GREEN,
       assigneeEmail: "soc2@demo.local",
@@ -1466,7 +1467,8 @@ async function seedDemoCases(
             description: def.description,
             cat: def.cat,
             impactLevel: def.impactLevel,
-            category: def.category,
+            incidentSource: def.incidentSource,
+            incidentSourceCustom: def.incidentSource === "OTHER" ? (def.incidentSourceCustom ?? null) : null,
             status: def.status,
             tlp: def.tlp,
             createdById: creatorId,
@@ -1656,8 +1658,90 @@ async function seedDemoNotifications(adminId: string, caseIds: string[]): Promis
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Config option seeding — idempotent, upserts all default display labels
+// ---------------------------------------------------------------------------
+async function seedConfigOptions(adminId: string): Promise<void> {
+  interface OptionDef {
+    category: string;
+    value: string;
+    label: string;
+    shortLabel: string;
+    color?: string;
+    sortOrder: number;
+  }
+
+  const defaults: OptionDef[] = [
+    // Incident Categories
+    { category: "CAT", value: "CAT_1", label: "CAT 1 — Unauthorized Root/Admin Access", shortLabel: "CAT 1", color: "red",     sortOrder: 1 },
+    { category: "CAT", value: "CAT_2", label: "CAT 2 — Unauthorized User-Level Access",  shortLabel: "CAT 2", color: "red",     sortOrder: 2 },
+    { category: "CAT", value: "CAT_3", label: "CAT 3 — Unsuccessful Activity Attempt",   shortLabel: "CAT 3", color: "neutral", sortOrder: 3 },
+    { category: "CAT", value: "CAT_4", label: "CAT 4 — Denial of Service",               shortLabel: "CAT 4", color: "orange",  sortOrder: 4 },
+    { category: "CAT", value: "CAT_5", label: "CAT 5 — Non-Compliance Activity",         shortLabel: "CAT 5", color: "amber",   sortOrder: 5 },
+    { category: "CAT", value: "CAT_6", label: "CAT 6 — Reconnaissance/Scanning",         shortLabel: "CAT 6", color: "neutral", sortOrder: 6 },
+    { category: "CAT", value: "CAT_7", label: "CAT 7 — Malicious Logic Detected",        shortLabel: "CAT 7", color: "amber",   sortOrder: 7 },
+    { category: "CAT", value: "CAT_8", label: "CAT 8 — Investigating / Undetermined",    shortLabel: "CAT 8", color: "blue",    sortOrder: 8 },
+    { category: "CAT", value: "CAT_9", label: "CAT 9 — Explained Anomaly",               shortLabel: "CAT 9", color: "neutral", sortOrder: 9 },
+    // TLP
+    { category: "TLP", value: "WHITE", label: "TLP:WHITE", shortLabel: "WHITE", color: "neutral", sortOrder: 1 },
+    { category: "TLP", value: "GREEN", label: "TLP:GREEN", shortLabel: "GREEN", color: "green",   sortOrder: 2 },
+    { category: "TLP", value: "AMBER", label: "TLP:AMBER", shortLabel: "AMBER", color: "amber",   sortOrder: 3 },
+    { category: "TLP", value: "RED",   label: "TLP:RED",   shortLabel: "RED",   color: "red",     sortOrder: 4 },
+    // Status
+    { category: "STATUS", value: "NEW",            label: "New",            shortLabel: "NEW",    color: "neutral", sortOrder: 1 },
+    { category: "STATUS", value: "IN_PROGRESS",    label: "In Progress",    shortLabel: "IN PROG", color: "amber",  sortOrder: 2 },
+    { category: "STATUS", value: "PENDING_REVIEW", label: "Pending Review", shortLabel: "REVIEW", color: "orange",  sortOrder: 3 },
+    { category: "STATUS", value: "CLOSED",         label: "Closed",         shortLabel: "CLOSED", color: "green",   sortOrder: 4 },
+    { category: "STATUS", value: "ON_HOLD",        label: "On Hold",        shortLabel: "HOLD",   color: "purple",  sortOrder: 5 },
+    { category: "STATUS", value: "TICKET",         label: "Ticket",         shortLabel: "TICKET", color: "cyan",    sortOrder: 6 },
+    // Impact
+    { category: "IMPACT", value: "HIGH",   label: "High",   shortLabel: "HIGH", color: "red",   sortOrder: 1 },
+    { category: "IMPACT", value: "MEDIUM", label: "Medium", shortLabel: "MED",  color: "amber", sortOrder: 2 },
+    { category: "IMPACT", value: "LOW",    label: "Low",    shortLabel: "LOW",  color: "blue",  sortOrder: 3 },
+    // Incident Source
+    { category: "INCIDENT_SOURCE", value: "EXTERNAL_THREAT", label: "External Threat",              shortLabel: "EXT",  color: "red",     sortOrder: 1 },
+    { category: "INCIDENT_SOURCE", value: "INSIDER_THREAT",  label: "Insider Threat",               shortLabel: "INT",  color: "orange",  sortOrder: 2 },
+    { category: "INCIDENT_SOURCE", value: "THIRD_PARTY",     label: "Third Party / Supply Chain",   shortLabel: "3RD",  color: "amber",   sortOrder: 3 },
+    { category: "INCIDENT_SOURCE", value: "UNKNOWN",         label: "Unknown",                      shortLabel: "UNK",  color: "neutral", sortOrder: 4 },
+    { category: "INCIDENT_SOURCE", value: "OTHER",           label: "Other",                        shortLabel: "OTH",  color: "neutral", sortOrder: 5 },
+    // Team
+    { category: "TEAM", value: "SOC",              label: "SOC",                       shortLabel: "SOC",  color: "blue",    sortOrder: 1 },
+    { category: "TEAM", value: "IR",               label: "Incident Response",         shortLabel: "IR",   color: "orange",  sortOrder: 2 },
+    { category: "TEAM", value: "MALWARE",          label: "Malware Analysis",          shortLabel: "MAL",  color: "purple",  sortOrder: 3 },
+    { category: "TEAM", value: "CTI",              label: "Cyber Threat Intelligence", shortLabel: "CTI",  color: "green",   sortOrder: 4 },
+    { category: "TEAM", value: "COUNTERMEASURES",  label: "Countermeasures",           shortLabel: "CNTM", color: "red",     sortOrder: 5 },
+  ];
+
+  let created = 0;
+  for (const opt of defaults) {
+    await prisma.configOption.upsert({
+      where: { category_value: { category: opt.category, value: opt.value } },
+      update: {},  // idempotent — do not overwrite admin customizations
+      create: {
+        category:    opt.category,
+        value:       opt.value,
+        label:       opt.label,
+        shortLabel:  opt.shortLabel,
+        color:       opt.color ?? null,
+        sortOrder:   opt.sortOrder,
+        isActive:    true,
+        updatedById: adminId,
+      },
+    });
+    created++;
+  }
+  console.log(`[seed] Config options: ${created} upserted.`);
+}
+
 async function main() {
   await seedAdmin();
+
+  // Always seed config options (idempotent — requires admin user to exist)
+  const adminEmail = process.env.SEED_ADMIN_EMAIL!;
+  const adminUser = await prisma.user.findUnique({ where: { email: adminEmail } });
+  if (adminUser) {
+    await seedConfigOptions(adminUser.id);
+  }
 
   if (process.env.NEXT_PUBLIC_DEMO_MODE !== "true") {
     console.log("[seed] NEXT_PUBLIC_DEMO_MODE not set — skipping demo data.");
@@ -1675,9 +1759,7 @@ async function main() {
   const userIds = await seedDemoUsers();
   const createdUserCount = Object.keys(userIds).length;
 
-  // Get admin id for fallback
-  const adminEmail = process.env.SEED_ADMIN_EMAIL!;
-  const adminUser = await prisma.user.findUnique({ where: { email: adminEmail } });
+  // Re-fetch admin id for demo data
   const adminId = adminUser!.id;
 
   console.log("[seed] Seeding demo cases...");

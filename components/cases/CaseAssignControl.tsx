@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { TEAM_LABEL } from "@/lib/teamDisplay";
 
 interface User {
   id: string;
@@ -61,23 +62,23 @@ export function CaseAssignControl({
   const isDirty = selected !== (currentAssigneeId ?? "");
 
   return (
-    <div className="space-y-2">
-      <div className="text-sm text-neutral-300">
+    <div className="w-full min-w-0 space-y-2">
+      <div className="text-sm text-neutral-300 truncate">
         {currentAssigneeName ?? <span className="text-neutral-600">Unassigned</span>}
       </div>
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-2 items-center w-full min-w-0">
         <select
           value={selected}
           onChange={(e) => {
             setSelected(e.target.value);
             setSuccess(false);
           }}
-          className="flex-1 bg-neutral-900 border border-neutral-700 text-white rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="min-w-0 flex-1 bg-neutral-900 border border-neutral-700 text-white rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">Unassigned</option>
           {users.map((u) => (
             <option key={u.id} value={u.id}>
-              {u.name} {u.team ? `(${u.team})` : ""}
+              {u.name} {u.team ? `(${(TEAM_LABEL as Record<string, string>)[u.team] ?? u.team})` : ""}
             </option>
           ))}
         </select>
@@ -85,7 +86,7 @@ export function CaseAssignControl({
         <button
           onClick={handleAssign}
           disabled={loading || !isDirty}
-          className="text-xs px-3 py-1.5 rounded bg-blue-700 hover:bg-blue-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed text-white transition-colors"
+          className="flex-shrink-0 text-xs px-3 py-1.5 rounded bg-blue-700 hover:bg-blue-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed text-white transition-colors"
         >
           {loading ? "..." : "Save"}
         </button>

@@ -23,7 +23,7 @@ const IMPACT_STYLE: Record<AssetImpact, string> = {
   CLEARED:   "text-green-400 bg-green-950 border-green-800",
 };
 
-export function AssetSection({ caseId }: { caseId: string }) {
+export function AssetSection({ caseId, readonly }: { caseId: string; readonly?: boolean }) {
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -101,7 +101,7 @@ export function AssetSection({ caseId }: { caseId: string }) {
             <span className={`flex-shrink-0 text-[10px] px-1 py-0.5 rounded border font-medium ${IMPACT_STYLE[a.impact]}`}>
               {a.impact}
             </span>
-            <button
+            {!readonly && <button
               onClick={() => handleDelete(a.id)}
               className="flex-shrink-0 text-neutral-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
               title="Remove asset"
@@ -109,7 +109,7 @@ export function AssetSection({ caseId }: { caseId: string }) {
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </button>}
           </div>
         ))}
         {loaded && assets.length === 0 && (
@@ -117,7 +117,7 @@ export function AssetSection({ caseId }: { caseId: string }) {
         )}
       </div>
 
-      <div className="space-y-1.5">
+      {!readonly && <div className="space-y-1.5">
         <div className="grid grid-cols-2 gap-1.5">
           <input type="text" value={hostname} onChange={(e) => setHostname(e.target.value)}
             placeholder="Hostname" className="bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500" />
@@ -130,9 +130,9 @@ export function AssetSection({ caseId }: { caseId: string }) {
         </div>
         <div className="flex gap-1.5">
           <input type="text" value={owner} onChange={(e) => setOwner(e.target.value)}
-            placeholder="Owner/team" className="flex-1 bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-600 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            placeholder="Owner/team" className="flex-1 min-w-0 bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-600 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
           <select value={impact} onChange={(e) => setImpact(e.target.value as AssetImpact)}
-            className="bg-neutral-900 border border-neutral-700 text-white rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
+            className="w-28 flex-shrink-0 bg-neutral-900 border border-neutral-700 text-white rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
             <option value="SUSPECTED">Suspected</option>
             <option value="CONFIRMED">Confirmed</option>
             <option value="CLEARED">Cleared</option>
@@ -143,7 +143,7 @@ export function AssetSection({ caseId }: { caseId: string }) {
           </button>
         </div>
         {formError && <p className="text-xs text-red-400">{formError}</p>}
-      </div>
+      </div>}
     </CollapsibleSection>
   );
 }

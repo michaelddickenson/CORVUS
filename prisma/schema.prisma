@@ -24,6 +24,13 @@ enum Role {
   CTI_ANALYST
   COUNTERMEASURES
   TEAM_LEAD
+  OBSERVER
+}
+
+// Read-only or write access granted to a specific user on a specific case
+enum CaseAccess {
+  READ
+  WRITE
 }
 
 enum Team {
@@ -39,6 +46,8 @@ enum Status {
   IN_PROGRESS
   PENDING_REVIEW
   CLOSED
+  ON_HOLD  // not in sequential flow; available via override dropdown
+  TICKET   // not in sequential flow; available via override dropdown
   // TRIAGED removed — flow: NEW → IN_PROGRESS → PENDING_REVIEW → CLOSED
   // ARCHIVED is explicitly forbidden — do not add it
 }
@@ -63,14 +72,11 @@ enum ImpactLevel {
   HIGH
 }
 
-enum Category {
-  MALWARE
-  INTRUSION
-  PHISHING
+enum IncidentSource {
+  EXTERNAL_THREAT
   INSIDER_THREAT
-  NONCOMPLIANCE
-  VULNERABILITY
-  ANOMALOUS_ACTIVITY
+  THIRD_PARTY
+  UNKNOWN
   OTHER
 }
 
@@ -166,7 +172,11 @@ model User {
   caseEntries      CaseEntry[]
   notifications    Notification[]   @relation("UserNotifications")
   auditLogs        AuditLog[]
-  teamStatusEdits  CaseTeamStatus[]
+  teamStatusEdits      CaseTeamStatus[]
+  configOptionsUpdated ConfigOption[]
+  systemConfigsUpdated SystemConfig[]
+  casePermissions      CasePermission[] @relation("PermissionRecipient")
+  permissionsGranted   CasePermission[] @relation("PermissionGrantor")
 
   @@map("users")
 }
@@ -182,10 +192,11 @@ model Case {
   title       String
   description String      @db.Text
   status      Status      @default(NEW)
-  cat         IncidentCat @default(CAT_8)
-  impactLevel ImpactLevel @default(LOW)
-  category    Category
-  tlp         TLP         @default(GREEN)
+  cat             IncidentCat    @default(CAT_8)
+  impactLevel     ImpactLevel    @default(LOW)
+  incidentSource  IncidentSource @default(UNKNOWN)
+  incidentSourceCustom String?
+  tlp             TLP            @default(GREEN)
 
   createdById String
   createdBy   User        @relation("CaseCreator", fields: [createdById], references: [id])
@@ -229,6 +240,7 @@ model Case {
   linkedFrom    CaseLink[]        @relation("LinkSource")
   linkedTo      CaseLink[]        @relation("LinkTarget")
   teamStatuses  CaseTeamStatus[]
+  permissions   CasePermission[]
 
   @@index([caseId])
   @@index([status])
@@ -424,6 +436,42 @@ model CaseLink {
 }
 
 // ---------------------------------------------------------------------------
+// ConfigOption — DB-driven display labels for enum values (v2 Phase 2)
+// Enum values remain in Prisma schema; this table stores labels/display only.
+// ---------------------------------------------------------------------------
+model ConfigOption {
+  id         String  @id @default(uuid())
+  category   String  // "CAT" | "TLP" | "STATUS" | "TEAM" | "IMPACT" | "CATEGORY"
+  value      String  // enum value, e.g. "CAT_1", "GREEN", "NEW"
+  label      String  // full display label
+  shortLabel String  // short/badge label
+  color      String? // semantic color token (e.g. "red", "blue") — optional
+  sortOrder  Int     @default(0)
+  isActive   Boolean @default(true)
+
+  updatedAt   DateTime @updatedAt
+  updatedById String
+  updatedBy   User     @relation(fields: [updatedById], references: [id])
+
+  @@unique([category, value])
+  @@index([category, isActive])
+  @@map("config_options")
+}
+
+// ---------------------------------------------------------------------------
+// SystemConfig — key/value store for site-wide settings
+// ---------------------------------------------------------------------------
+model SystemConfig {
+  key         String   @id
+  value       Json
+  updatedAt   DateTime @updatedAt
+  updatedById String
+  updatedBy   User     @relation(fields: [updatedById], references: [id])
+
+  @@map("system_config")
+}
+
+// ---------------------------------------------------------------------------
 // CaseTeamStatus — per-team workflow status on a case (v2)
 // ---------------------------------------------------------------------------
 model CaseTeamStatus {
@@ -441,4 +489,29 @@ model CaseTeamStatus {
   @@unique([caseId, team])
   @@index([caseId])
   @@map("case_team_statuses")
+}
+
+// ---------------------------------------------------------------------------
+// CasePermission — per-case access grants (v2 Phase 2)
+// Used to grant OBSERVER users write access on specific cases,
+// or to grant READ access to users who would otherwise be blocked by TLP:RED.
+// ---------------------------------------------------------------------------
+model CasePermission {
+  id          String     @id @default(uuid())
+  caseId      String
+  case        Case       @relation(fields: [caseId], references: [id])
+
+  userId      String
+  user        User       @relation("PermissionRecipient", fields: [userId], references: [id])
+
+  accessLevel CaseAccess
+  grantedById String
+  grantedBy   User       @relation("PermissionGrantor", fields: [grantedById], references: [id])
+  grantedAt   DateTime   @default(now())
+  expiresAt   DateTime?
+
+  @@unique([caseId, userId])
+  @@index([caseId])
+  @@index([userId])
+  @@map("case_permissions")
 }

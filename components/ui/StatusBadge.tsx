@@ -5,6 +5,8 @@ const statusStyles: Record<Status, string> = {
   IN_PROGRESS:    "bg-amber-950 text-amber-400 border border-amber-800",
   PENDING_REVIEW: "bg-orange-950 text-orange-400 border border-orange-800",
   CLOSED:         "bg-green-950 text-green-400 border border-green-800",
+  ON_HOLD:        "bg-purple-950 text-purple-400 border border-purple-800",
+  TICKET:         "bg-cyan-950 text-cyan-400 border border-cyan-800",
 };
 
 const statusLabels: Record<Status, string> = {
@@ -12,6 +14,8 @@ const statusLabels: Record<Status, string> = {
   IN_PROGRESS:    "In Progress",
   PENDING_REVIEW: "Pending Review",
   CLOSED:         "Closed",
+  ON_HOLD:        "On Hold",
+  TICKET:         "Ticket",
 };
 
 export function StatusBadge({ status }: { status: Status }) {

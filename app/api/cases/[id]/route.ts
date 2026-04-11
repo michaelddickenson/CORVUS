@@ -2,11 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
+import { Role, IncidentCat, ImpactLevel, IncidentSource, TLP } from "@prisma/client";
 import { z } from "zod";
 import { patchIncidentDetailsSchema } from "@/lib/validations/case";
 
 const patchCaseSchema = z.object({
+  // Core editable case fields
+  title:                z.string().min(3).max(200).optional(),
+  description:          z.string().min(1).max(10000).optional(),
+  cat:                  z.nativeEnum(IncidentCat).optional(),
+  impactLevel:          z.nativeEnum(ImpactLevel).optional(),
+  incidentSource:       z.nativeEnum(IncidentSource).optional(),
+  incidentSourceCustom: z.string().max(200).optional().nullable(),
+  tlp:                  z.nativeEnum(TLP).optional(),
+  // BLUF / summary fields
   blufSummary:          z.string().max(10000).optional().nullable(),
   recommendedActions:   z.string().max(10000).optional().nullable(),
   classificationCustom: z.string().max(200).optional().nullable(),
@@ -23,7 +32,7 @@ export async function GET(
   const c = await prisma.case.findUnique({
     where: { id: params.id },
     include: {
-      createdBy: { select: { id: true, name: true, email: true } },
+      createdBy:  { select: { id: true, name: true, email: true } },
       assignedTo: { select: { id: true, name: true, email: true } },
     },
   });
@@ -33,19 +42,26 @@ export async function GET(
   return NextResponse.json(c);
 }
 
-// PATCH /api/cases/[id] — update blufSummary, recommendedActions, and/or classificationCustom
-// blufSummary: any authenticated user
-// recommendedActions: TEAM_LEAD or ADMIN only
-// classificationCustom: any authenticated user
+// PATCH /api/cases/[id]
+// - Core fields (title, description, cat, impactLevel, category, tlp): any non-OBSERVER user
+// - blufSummary, classificationCustom: any non-OBSERVER user
+// - recommendedActions: TEAM_LEAD or ADMIN only
+// - Incident timeline fields: any non-OBSERVER user
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role === "OBSERVER") {
+    return NextResponse.json({ error: "Observers may not perform write operations." }, { status: 403 });
+  }
 
-  const exists = await prisma.case.findUnique({ where: { id: params.id }, select: { id: true } });
-  if (!exists) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const current = await prisma.case.findUnique({
+    where:  { id: params.id },
+    select: { id: true, title: true, description: true, cat: true, impactLevel: true, incidentSource: true, tlp: true },
+  });
+  if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
@@ -56,6 +72,7 @@ export async function PATCH(
   }
 
   const {
+    title, description, cat, impactLevel, incidentSource, incidentSourceCustom, tlp,
     blufSummary, recommendedActions, classificationCustom,
     incidentStartedAt, incidentEndedAt, incidentDetectedAt, incidentReportedAt,
     detectionSource, attackVector, affectedNetwork, missionImpact,
@@ -76,6 +93,15 @@ export async function PATCH(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {};
+  if (title                !== undefined) updateData.title                = title;
+  if (description          !== undefined) updateData.description          = description;
+  if (cat                  !== undefined) updateData.cat                  = cat;
+  if (impactLevel          !== undefined) updateData.impactLevel          = impactLevel;
+  if (incidentSource       !== undefined) {
+    updateData.incidentSource = incidentSource;
+    updateData.incidentSourceCustom = incidentSource === "OTHER" ? (incidentSourceCustom ?? null) : null;
+  }
+  if (tlp                  !== undefined) updateData.tlp                  = tlp;
   if (blufSummary          !== undefined) updateData.blufSummary          = blufSummary;
   if (recommendedActions   !== undefined) updateData.recommendedActions   = recommendedActions;
   if (classificationCustom !== undefined) updateData.classificationCustom = classificationCustom;
@@ -94,7 +120,23 @@ export async function PATCH(
     return NextResponse.json({ error: "No fields to update." }, { status: 400 });
   }
 
-  const fields = Object.keys(updateData).join(", ");
+  // Build a descriptive FIELD_EDIT body noting what changed
+  const changes: string[] = [];
+  if (title          !== undefined && title          !== current.title)          changes.push(`title`);
+  if (description    !== undefined && description    !== current.description)    changes.push(`description`);
+  if (cat            !== undefined && cat            !== current.cat)            changes.push(`cat: ${current.cat} → ${cat}`);
+  if (impactLevel    !== undefined && impactLevel    !== current.impactLevel)    changes.push(`impact: ${current.impactLevel} → ${impactLevel}`);
+  if (incidentSource !== undefined && incidentSource !== current.incidentSource) changes.push(`incidentSource: ${current.incidentSource} → ${incidentSource}`);
+  if (tlp            !== undefined && tlp            !== current.tlp)            changes.push(`tlp: ${current.tlp} → ${tlp}`);
+  // For fields without before/after (incident details, bluf, etc.)
+  const otherFields = Object.keys(updateData).filter(
+    (k) => !["title","description","cat","impactLevel","incidentSource","incidentSourceCustom","tlp"].includes(k)
+  );
+  if (otherFields.length > 0) changes.push(...otherFields);
+
+  const entryBody = changes.length > 0
+    ? `Case fields updated by ${session.user.name ?? session.user.email}: ${changes.join("; ")}.`
+    : `Case fields updated by ${session.user.name ?? session.user.email}.`;
 
   try {
     await prisma.case.update({ where: { id: params.id }, data: updateData });
@@ -104,7 +146,7 @@ export async function PATCH(
         authorId:   session.user.id,
         authorTeam: session.user.team ?? "SOC",
         entryType:  "FIELD_EDIT",
-        body:       `Updated ${fields}.`,
+        body:       entryBody,
       },
     });
   } catch (err) {

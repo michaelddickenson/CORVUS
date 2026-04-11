@@ -2,8 +2,9 @@
 
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { IncidentCat, ImpactLevel, Category, TLP } from "@prisma/client";
+import { IncidentCat, ImpactLevel, IncidentSource, TLP } from "@prisma/client";
 import { CAT_LABEL, ALL_CATS, ALL_IMPACTS } from "@/lib/catDisplay";
+import { TEAM_LABEL } from "@/lib/teamDisplay";
 import { useToast } from "@/components/ui/Toast";
 
 interface User {
@@ -14,15 +15,12 @@ interface User {
   team:  string | null;
 }
 
-const categoryOptions: { value: Category; label: string }[] = [
-  { value: "MALWARE",            label: "Malware"            },
-  { value: "INTRUSION",          label: "Intrusion"          },
-  { value: "PHISHING",           label: "Phishing"           },
-  { value: "INSIDER_THREAT",     label: "Insider Threat"     },
-  { value: "NONCOMPLIANCE",      label: "Non-Compliance"     },
-  { value: "VULNERABILITY",      label: "Vulnerability"      },
-  { value: "ANOMALOUS_ACTIVITY", label: "Anomalous Activity" },
-  { value: "OTHER",              label: "Other"              },
+const incidentSourceOptions: { value: IncidentSource; label: string }[] = [
+  { value: "EXTERNAL_THREAT", label: "External Threat"              },
+  { value: "INSIDER_THREAT",  label: "Insider Threat"               },
+  { value: "THIRD_PARTY",     label: "Third Party / Supply Chain"   },
+  { value: "UNKNOWN",         label: "Unknown"                      },
+  { value: "OTHER",           label: "Other..."                     },
 ];
 
 const tlpOptions: { value: TLP; label: string }[] = [
@@ -49,12 +47,13 @@ export function NewCaseForm() {
   const [form, setForm] = useState({
     title:        "",
     description:  "",
-    cat:          "CAT_8"  as IncidentCat,
-    impactLevel:  "LOW"    as ImpactLevel,
-    category:     "OTHER"  as Category,
-    tlp:          "GREEN"  as TLP,
-    assignedToId: ""       as string,
+    cat:          "CAT_8"   as IncidentCat,
+    impactLevel:  "LOW"     as ImpactLevel,
+    incidentSource: "UNKNOWN" as IncidentSource,
+    tlp:          "GREEN"   as TLP,
+    assignedToId: ""        as string,
   });
+  const [incidentSourceCustom, setIncidentSourceCustom] = useState("");
   const [classificationCustom, setClassificationCustom] = useState("");
   const [useCustomClassification, setUseCustomClassification] = useState(false);
 
@@ -80,6 +79,7 @@ export function NewCaseForm() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           ...form,
+          incidentSourceCustom: form.incidentSource === "OTHER" ? (incidentSourceCustom.trim() || null) : null,
           classificationCustom: useCustomClassification ? (classificationCustom.trim() || null) : null,
           assignedToId:         form.assignedToId || null,
         }),
@@ -176,20 +176,33 @@ export function NewCaseForm() {
 
         <div>
           <label className="block text-sm text-neutral-300 mb-1.5">
-            Incident Type <span className="text-red-400">*</span>
+            Incident Source <span className="text-red-400">*</span>
           </label>
           <select
             required
-            value={form.category}
-            onChange={(e) => set("category", e.target.value)}
+            value={form.incidentSource}
+            onChange={(e) => {
+              set("incidentSource", e.target.value);
+              if (e.target.value !== "OTHER") setIncidentSourceCustom("");
+            }}
             className="w-full bg-neutral-900 border border-neutral-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           >
-            {categoryOptions.map((o) => (
+            {incidentSourceOptions.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
           </select>
+          {form.incidentSource === "OTHER" && (
+            <input
+              type="text"
+              maxLength={200}
+              placeholder="Describe the incident source"
+              value={incidentSourceCustom}
+              onChange={(e) => setIncidentSourceCustom(e.target.value)}
+              className="mt-1.5 w-full bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-500 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          )}
         </div>
       </div>
 
@@ -204,6 +217,7 @@ export function NewCaseForm() {
                 setUseCustomClassification(true);
               } else {
                 setUseCustomClassification(false);
+                setClassificationCustom("");
                 set("tlp", e.target.value);
               }
             }}
@@ -212,7 +226,7 @@ export function NewCaseForm() {
             {tlpOptions.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
-            <option value="__CUSTOM__">Custom...</option>
+            <option value="__CUSTOM__">Other...</option>
           </select>
           {useCustomClassification && (
             <input
@@ -238,7 +252,7 @@ export function NewCaseForm() {
             <option value="">Unassigned</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name} {u.team ? `(${u.team})` : ""}
+                {u.name} {u.team ? `(${(TEAM_LABEL as Record<string, string>)[u.team] ?? u.team})` : ""}
               </option>
             ))}
           </select>

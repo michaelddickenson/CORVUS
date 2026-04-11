@@ -30,8 +30,8 @@ export const TEAM_COLORS: Record<TeamDisplay, { text: string; bg: string; border
 export const TEAM_LABEL: Record<TeamDisplay, string> = {
   SOC:             "SOC",
   IR:              "IR",
-  MALWARE:         "MALWARE",
+  MALWARE:         "MAL",
   CTI:             "CTI",
-  COUNTERMEASURES: "CNTM", // CM is ambiguous with Case Management
+  COUNTERMEASURES: "CNTM",
   ADMIN:           "ADMIN",
 };

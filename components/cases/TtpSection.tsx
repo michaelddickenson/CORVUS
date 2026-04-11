@@ -13,7 +13,7 @@ interface TtpRow {
   createdAt: string;
 }
 
-export function TtpSection({ caseId }: { caseId: string }) {
+export function TtpSection({ caseId, readonly }: { caseId: string; readonly?: boolean }) {
   const [ttps, setTtps] = useState<TtpRow[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -100,7 +100,7 @@ export function TtpSection({ caseId }: { caseId: string }) {
               <span className="text-neutral-300 truncate block">{t.techniqueName}</span>
               <span className="text-neutral-600 text-[10px]">{t.tactic}</span>
             </div>
-            <button
+            {!readonly && <button
               onClick={() => handleDelete(t.id)}
               className="flex-shrink-0 text-neutral-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 mt-0.5"
               title="Remove TTP"
@@ -108,7 +108,7 @@ export function TtpSection({ caseId }: { caseId: string }) {
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </button>}
           </div>
         ))}
         {loaded && ttps.length === 0 && (
@@ -116,7 +116,7 @@ export function TtpSection({ caseId }: { caseId: string }) {
         )}
       </div>
 
-      <div className="space-y-1.5 relative">
+      {!readonly && <div className="space-y-1.5 relative">
         <input
           type="text"
           value={query}
@@ -157,7 +157,7 @@ export function TtpSection({ caseId }: { caseId: string }) {
           {submitting ? "..." : "Tag TTP"}
         </button>
         {formError && <p className="text-xs text-red-400 mt-1">{formError}</p>}
-      </div>
+      </div>}
     </CollapsibleSection>
   );
 }

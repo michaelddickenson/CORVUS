@@ -21,15 +21,12 @@ function formatUtc(date: Date | string | null) {
   return new Date(date).toISOString().replace("T", " ").slice(0, 16) + " UTC";
 }
 
-const categoryLabel: Record<string, string> = {
-  MALWARE:            "Malware",
-  INTRUSION:          "Intrusion",
-  PHISHING:           "Phishing",
-  INSIDER_THREAT:     "Insider Threat",
-  NONCOMPLIANCE:      "Non-Compliance",
-  VULNERABILITY:      "Vulnerability",
-  ANOMALOUS_ACTIVITY: "Anomalous Activity",
-  OTHER:              "Other",
+const incidentSourceLabel: Record<string, string> = {
+  EXTERNAL_THREAT: "External Threat",
+  INSIDER_THREAT:  "Insider Threat",
+  THIRD_PARTY:     "Third Party / Supply Chain",
+  UNKNOWN:         "Unknown",
+  OTHER:           "Other",
 };
 
 const STATUS_STYLES: Record<TeamStatus, { text: string; bg: string; border: string }> = {
@@ -141,7 +138,11 @@ export default async function PublicSummaryPage({
             <span className="text-neutral-700">·</span>
             <ImpactBadge level={c.impactLevel} />
             <span className="text-neutral-700">·</span>
-            <span className="text-xs text-neutral-400">{categoryLabel[c.category] ?? c.category}</span>
+            <span className="text-xs text-neutral-400">
+              {c.incidentSource === "OTHER" && c.incidentSourceCustom
+                ? c.incidentSourceCustom
+                : (incidentSourceLabel[c.incidentSource] ?? c.incidentSource)}
+            </span>
           </div>
 
           {/* Time metrics */}

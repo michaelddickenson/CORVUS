@@ -12,6 +12,9 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.user.role === "OBSERVER") {
+      return NextResponse.json({ error: "Observers may not perform write operations." }, { status: 403 });
+    }
 
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });

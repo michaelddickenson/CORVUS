@@ -164,9 +164,11 @@ function CopyButton({ text }: { text: string }) {
 export function ArtifactPanel({
   caseId,
   canDelete,
+  readonly,
 }: {
   caseId: string;
   canDelete: boolean;
+  readonly?: boolean;
 }) {
   const [artifacts, setArtifacts] = useState<ArtifactRow[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -315,8 +317,8 @@ export function ArtifactPanel({
         )}
       </div>
 
-      {/* Upload form */}
-      <div className="space-y-1.5">
+      {/* Upload form — hidden for readonly/observer */}
+      {!readonly && <div className="space-y-1.5">
         <div className="flex items-center gap-1.5">
           <label className="flex-1 cursor-pointer">
             <div className="bg-neutral-900 border border-neutral-700 hover:border-neutral-600 rounded px-2 py-1 text-xs text-neutral-400 transition-colors truncate">
@@ -363,7 +365,7 @@ export function ArtifactPanel({
             {formError}
           </div>
         )}
-      </div>
+      </div>}
     </CollapsibleSection>
   );
 }

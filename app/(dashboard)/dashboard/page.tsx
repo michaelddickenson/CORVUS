@@ -23,13 +23,15 @@ export const metadata = { title: "Dashboard — CORVUS" };
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-const STATUSES: Status[] = ["NEW", "IN_PROGRESS", "PENDING_REVIEW", "CLOSED"];
+const STATUSES: Status[] = ["NEW", "IN_PROGRESS", "PENDING_REVIEW", "CLOSED", "ON_HOLD", "TICKET"];
 
 const STATUS_LABEL: Record<Status, string> = {
   NEW:            "New",
   IN_PROGRESS:    "In Progress",
   PENDING_REVIEW: "Pending Review",
   CLOSED:         "Closed",
+  ON_HOLD:        "On Hold",
+  TICKET:         "Ticket",
 };
 
 const STATUS_STYLES: Record<Status, { border: string; bg: string; text: string }> = {
@@ -37,6 +39,8 @@ const STATUS_STYLES: Record<Status, { border: string; bg: string; text: string }
   IN_PROGRESS:    { border: "border-amber-800",    bg: "bg-amber-950/50",   text: "text-amber-400"    },
   PENDING_REVIEW: { border: "border-orange-800",   bg: "bg-orange-950/50",  text: "text-orange-400"   },
   CLOSED:         { border: "border-green-800",    bg: "bg-green-950/50",   text: "text-green-400"    },
+  ON_HOLD:        { border: "border-purple-800",   bg: "bg-purple-950/50",  text: "text-purple-400"   },
+  TICKET:         { border: "border-cyan-800",     bg: "bg-cyan-950/50",    text: "text-cyan-400"     },
 };
 
 // ---------------------------------------------------------------------------

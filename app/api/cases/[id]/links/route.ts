@@ -88,9 +88,10 @@ export async function POST(
     return NextResponse.json({ error: "Cannot link a case to itself." }, { status: 422 });
   }
 
-  const { c, allowed } = await getCaseAccess(params.id, session);
-  if (!c) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { c, allowed, canWrite } = await getCaseAccess(params.id, session);
+  if (!c)        return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!allowed)  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!canWrite) return NextResponse.json({ error: "Observers may not perform write operations." }, { status: 403 });
 
   const target = await prisma.case.findUnique({
     where:  { id: targetCaseId },

@@ -73,6 +73,7 @@ const roleLabel: Record<Role, string> = {
   CTI_ANALYST:      "CTI Analyst",
   COUNTERMEASURES:  "Countermeasures",
   TEAM_LEAD:        "Team Lead",
+  OBSERVER:         "Observer",
 };
 
 // ---------------------------------------------------------------------------
@@ -238,9 +239,10 @@ function NoteForm({
 interface Props {
   caseId:         string;  // UUID
   initialEntries: CaseEntryRow[];
+  canWrite?:      boolean;
 }
 
-export function CaseTimeline({ caseId, initialEntries }: Props) {
+export function CaseTimeline({ caseId, initialEntries, canWrite = true }: Props) {
   const [entries,    setEntries]    = useState<CaseEntryRow[]>(initialEntries);
   const [newEntryId, setNewEntryId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -282,10 +284,12 @@ export function CaseTimeline({ caseId, initialEntries }: Props) {
         </div>
       )}
 
-      {/* Note form */}
-      <div className="border-t border-neutral-800 pt-4">
-        <NoteForm caseId={caseId} onSubmit={handleNewEntry} />
-      </div>
+      {/* Note form — hidden for readonly/observer */}
+      {canWrite && (
+        <div className="border-t border-neutral-800 pt-4">
+          <NoteForm caseId={caseId} onSubmit={handleNewEntry} />
+        </div>
+      )}
     </div>
   );
 }

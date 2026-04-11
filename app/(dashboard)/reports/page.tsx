@@ -23,7 +23,7 @@ interface MetricsData {
   byCat:         Record<string, number>;
   byImpactLevel: Record<string, number>;
   byStatus:      Record<string, number>;
-  byCategory:    Record<string, number>;
+  byIncidentSource: Record<string, number>;
   avgCloseHours: number | null;
   perWeek:       { label: string; count: number }[];
   perBucket:     { label: string; count: number }[];
@@ -64,15 +64,12 @@ const STATUS_LABEL: Record<string, string> = {
   CLOSED:         "Closed",
 };
 
-const CATEGORY_LABEL: Record<string, string> = {
-  MALWARE:            "Malware",
-  INTRUSION:          "Intrusion",
-  PHISHING:           "Phishing",
-  INSIDER_THREAT:     "Insider Threat",
-  NONCOMPLIANCE:      "Non-Compliance",
-  VULNERABILITY:      "Vulnerability",
-  ANOMALOUS_ACTIVITY: "Anomalous Activity",
-  OTHER:              "Other",
+const INCIDENT_SOURCE_LABEL: Record<string, string> = {
+  EXTERNAL_THREAT: "External Threat",
+  INSIDER_THREAT:  "Insider Threat",
+  THIRD_PARTY:     "Third Party / Supply Chain",
+  UNKNOWN:         "Unknown",
+  OTHER:           "Other",
 };
 
 const IMPACT_COLOR: Record<string, string> = {
@@ -129,8 +126,8 @@ function StatCard({ label, value }: { label: string; value: string }) {
 // Tab — Case Metrics
 // ---------------------------------------------------------------------------
 function MetricsTab({ data, periodQs }: { data: MetricsData; periodQs: string }) {
-  const categoryData = Object.entries(data.byCategory)
-    .map(([k, v]) => ({ label: CATEGORY_LABEL[k] ?? k, count: v }))
+  const categoryData = Object.entries(data.byIncidentSource)
+    .map(([k, v]) => ({ label: INCIDENT_SOURCE_LABEL[k] ?? k, count: v }))
     .sort((a, b) => b.count - a.count);
 
   const openCount =
@@ -156,7 +153,7 @@ function MetricsTab({ data, periodQs }: { data: MetricsData; periodQs: string })
 
       {/* CAT distribution */}
       <div>
-        <SectionHeading>By Incident Category</SectionHeading>
+        <SectionHeading>By Incident Source</SectionHeading>
         <div className="flex gap-2 flex-wrap">
           {ALL_CATS.map((cat) => {
             const count = data.byCat[cat] ?? 0;
@@ -230,7 +227,7 @@ function MetricsTab({ data, periodQs }: { data: MetricsData; periodQs: string })
 
       {/* Category bar chart */}
       <div>
-        <SectionHeading>By Incident Type</SectionHeading>
+        <SectionHeading>By Incident Source</SectionHeading>
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4">
           <CategoryBarChart data={categoryData} />
         </div>

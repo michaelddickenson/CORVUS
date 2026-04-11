@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Role, Team } from "@prisma/client";
+import { Role, Team, IncidentSource } from "@prisma/client";
 import { CatBadge } from "@/components/ui/CatBadge";
 import { ImpactBadge } from "@/components/ui/ImpactBadge";
 import { TlpBadge } from "@/components/ui/TlpBadge";
@@ -15,12 +15,15 @@ import { AssetSection } from "@/components/cases/AssetSection";
 import { TtpSection } from "@/components/cases/TtpSection";
 import { CaseLinkSection } from "@/components/cases/CaseLinkSection";
 import { ArtifactPanel } from "@/components/cases/ArtifactPanel";
+import { AccessPanel } from "@/components/cases/AccessPanel";
 import { TeamStatusPanel } from "@/components/cases/TeamStatusPanel";
 import { BounceBackControl } from "@/components/cases/BounceBackControl";
 import { MarkCompleteButton } from "@/components/cases/MarkCompleteButton";
 import { SummaryTab, SummaryEntry, TeamStatusRow } from "@/components/cases/SummaryTab";
 import { CaseDetailTabs } from "@/components/cases/CaseDetailTabs";
 import { IncidentDetailsSection } from "@/components/cases/IncidentDetailsSection";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { CaseEditControl } from "@/components/cases/CaseEditControl";
 import { CAT_LABEL } from "@/lib/catDisplay";
 
 function formatUtc(date: Date | null) {
@@ -28,15 +31,12 @@ function formatUtc(date: Date | null) {
   return date.toISOString().replace("T", " ").slice(0, 19) + " UTC";
 }
 
-const categoryLabel: Record<string, string> = {
-  MALWARE:            "Malware",
-  INTRUSION:          "Intrusion",
-  PHISHING:           "Phishing",
-  INSIDER_THREAT:     "Insider Threat",
-  NONCOMPLIANCE:      "Non-Compliance",
-  VULNERABILITY:      "Vulnerability",
-  ANOMALOUS_ACTIVITY: "Anomalous Activity",
-  OTHER:              "Other",
+const incidentSourceLabel: Record<IncidentSource, string> = {
+  EXTERNAL_THREAT: "External Threat",
+  INSIDER_THREAT:  "Insider Threat",
+  THIRD_PARTY:     "Third Party / Supply Chain",
+  UNKNOWN:         "Unknown",
+  OTHER:           "Other",
 };
 
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -56,8 +56,8 @@ export default async function CaseDetailPage({
   const session = await getServerSession(authOptions);
   if (!session) return notFound();
 
-  // Fetch case, entries, and team statuses in parallel
-  const [c, rawEntries, teamStatuses, iocCount, ttpCount, assetCount] = await Promise.all([
+  // Fetch case, entries, team statuses, counts, and permission count in parallel
+  const [c, rawEntries, teamStatuses, iocCount, ttpCount, assetCount, permissionCount] = await Promise.all([
     prisma.case.findUnique({
       where:   { id: params.id },
       include: {
@@ -92,6 +92,7 @@ export default async function CaseDetailPage({
     prisma.ioc.count({ where: { caseId: params.id } }),
     prisma.ttp.count({ where: { caseId: params.id } }),
     prisma.asset.count({ where: { caseId: params.id } }),
+    prisma.casePermission.count({ where: { caseId: params.id } }),
   ]);
 
   if (!c) return notFound();
@@ -116,22 +117,40 @@ export default async function CaseDetailPage({
     updatedAt: r.updatedAt.toISOString(),
   }));
 
+  // Write access: OBSERVERs need an explicit WRITE CasePermission to write
+  let canWrite = session.user.role !== "OBSERVER";
+  if (!canWrite) {
+    const perm = await prisma.casePermission.findUnique({
+      where: { caseId_userId: { caseId: params.id, userId: session.user.id } },
+      select: { accessLevel: true, expiresAt: true },
+    });
+    canWrite = perm != null
+      && perm.accessLevel === "WRITE"
+      && (!perm.expiresAt || perm.expiresAt > new Date());
+  }
+
   // Permissions
-  const canEscalate =
+  const canOverride = session.user.role === Role.TEAM_LEAD || session.user.role === Role.ADMIN;
+
+  const canEscalate = canWrite && (
     c.createdById === session.user.id ||
     session.user.role === Role.TEAM_LEAD ||
-    session.user.role === Role.ADMIN;
+    session.user.role === Role.ADMIN
+  );
 
-  const canDeleteArtifact =
-    session.user.role === Role.ADMIN || session.user.role === Role.TEAM_LEAD;
+  const canDeleteArtifact = canWrite &&
+    (session.user.role === Role.ADMIN || session.user.role === Role.TEAM_LEAD);
 
   const canExport =
     session.user.role === Role.ADMIN || session.user.role === Role.TEAM_LEAD;
 
-  const canEditRecommendedActions =
-    session.user.role === Role.ADMIN || session.user.role === Role.TEAM_LEAD;
+  const canEditRecommendedActions = canWrite &&
+    (session.user.role === Role.ADMIN || session.user.role === Role.TEAM_LEAD);
 
   const canShareLink =
+    session.user.role === Role.ADMIN || session.user.role === Role.TEAM_LEAD;
+
+  const canManageAccess =
     session.user.role === Role.ADMIN || session.user.role === Role.TEAM_LEAD;
 
   // Team action permissions
@@ -140,16 +159,17 @@ export default async function CaseDetailPage({
     ? serializedTeamStatuses.find((r) => r.team === userTeam)
     : null;
 
-  const canMarkComplete = myTeamStatus?.status === "ACTIVE";
-  const canBounceBack   =
+  const canMarkComplete = canWrite && myTeamStatus?.status === "ACTIVE";
+  const canBounceBack   = canWrite && (
     myTeamStatus?.status === "ACTIVE" ||
     session.user.role === Role.TEAM_LEAD ||
-    session.user.role === Role.ADMIN;
+    session.user.role === Role.ADMIN
+  );
 
   const teamsInvolved = c.teamsInvolved as Team[];
 
-  // Always default to Summary tab
-  const defaultTab = "summary";
+  // Default to Summary tab if blufSummary is set, otherwise Timeline
+  const defaultTab = c.blufSummary ? "summary" : "timeline";
 
   const shareableLink = canShareLink
     ? `${process.env.NEXTAUTH_URL ?? ""}/cases/${c.id}/summary`
@@ -158,7 +178,7 @@ export default async function CaseDetailPage({
   return (
     <div className="flex gap-0 min-h-full">
       {/* ------------------------------------------------------------------ */}
-      {/* Left: metadata panel                                                */}
+      {/* Left: metadata panel (stripped to core metadata only)               */}
       {/* ------------------------------------------------------------------ */}
       <aside className="w-72 flex-shrink-0 border-r border-neutral-800 pr-6 mr-6 overflow-y-auto">
         {/* Case ID + title */}
@@ -168,21 +188,45 @@ export default async function CaseDetailPage({
               <p className="font-mono text-xs text-neutral-500 mb-1">{c.caseId}</p>
               <h1 className="text-base font-semibold text-white leading-snug">{c.title}</h1>
             </div>
-            {canExport && (
-              <a
-                href={`/api/cases/${c.id}/export`}
-                download
-                className="flex-shrink-0 mt-0.5 px-2 py-1 text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200 border border-neutral-700 rounded transition-colors"
-              >
-                Export
-              </a>
+            {(canExport || canWrite) && (
+              <div className="flex flex-col gap-1 flex-shrink-0 mt-0.5">
+                {canExport && (
+                  <a
+                    href={`/api/cases/${c.id}/export`}
+                    download
+                    className="px-2 py-1 text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200 border border-neutral-700 rounded transition-colors text-center"
+                  >
+                    Export
+                  </a>
+                )}
+                {canWrite && (
+                  <CaseEditControl
+                    caseUuid={c.id}
+                    title={c.title}
+                    description={c.description}
+                    cat={c.cat}
+                    impactLevel={c.impactLevel}
+                    incidentSource={c.incidentSource}
+                    incidentSourceCustom={c.incidentSourceCustom}
+                    tlp={c.tlp}
+                    classificationCustom={c.classificationCustom}
+                  />
+                )}
+              </div>
             )}
           </div>
         </div>
 
         <dl>
           <MetaRow label="Status">
-            <CaseStatusControl caseUuid={c.id} currentStatus={c.status} />
+            {canWrite
+              ? <CaseStatusControl
+                  caseUuid={c.id}
+                  currentStatus={c.status}
+                  canOverride={canOverride}
+                />
+              : <span className="text-sm text-neutral-300">{c.status.replace(/_/g, " ")}</span>
+            }
           </MetaRow>
 
           <MetaRow label="Incident Category">
@@ -196,8 +240,10 @@ export default async function CaseDetailPage({
             <ImpactBadge level={c.impactLevel} />
           </MetaRow>
 
-          <MetaRow label="Incident Type">
-            {categoryLabel[c.category] ?? c.category}
+          <MetaRow label="Incident Source">
+            {c.incidentSource === "OTHER" && c.incidentSourceCustom
+              ? c.incidentSourceCustom
+              : (incidentSourceLabel[c.incidentSource] ?? c.incidentSource)}
           </MetaRow>
 
           <MetaRow label="Classification">
@@ -205,18 +251,21 @@ export default async function CaseDetailPage({
           </MetaRow>
 
           <MetaRow label="Assigned To">
-            <CaseAssignControl
-              caseUuid={c.id}
-              currentAssigneeId={c.assignedTo?.id ?? null}
-              currentAssigneeName={c.assignedTo?.name ?? null}
-            />
+            {canWrite
+              ? <CaseAssignControl
+                  caseUuid={c.id}
+                  currentAssigneeId={c.assignedTo?.id ?? null}
+                  currentAssigneeName={c.assignedTo?.name ?? null}
+                />
+              : <span className="text-sm text-neutral-300">{c.assignedTo?.name ?? "Unassigned"}</span>
+            }
           </MetaRow>
 
           <MetaRow label="Created By">
             {c.createdBy.name}
           </MetaRow>
 
-          {/* Team Status Panel — replaces plain "Teams Involved" list */}
+          {/* Team Status Panel */}
           <MetaRow label="Team Status">
             <TeamStatusPanel caseId={c.id} initialData={serializedTeamStatuses} />
           </MetaRow>
@@ -267,34 +316,10 @@ export default async function CaseDetailPage({
             {c.description}
           </p>
         </div>
-
-        {/* ── Incident Details ──────────────────────────────────────────── */}
-        <IncidentDetailsSection
-          caseId={c.id}
-          incidentStartedAt={c.incidentStartedAt?.toISOString() ?? null}
-          incidentEndedAt={c.incidentEndedAt?.toISOString() ?? null}
-          incidentDetectedAt={c.incidentDetectedAt?.toISOString() ?? null}
-          incidentReportedAt={c.incidentReportedAt?.toISOString() ?? null}
-          detectionSource={c.detectionSource ?? null}
-          attackVector={c.attackVector ?? null}
-          affectedNetwork={c.affectedNetwork ?? null}
-          missionImpact={c.missionImpact ?? null}
-          reportingRequired={c.reportingRequired}
-          externalTicketId={c.externalTicketId ?? null}
-        />
-
-        {/* ── Structured data modules (Phases 4–6) ──────────────────────── */}
-        <div className="border-t border-neutral-800 pt-1">
-          <ArtifactPanel caseId={c.id} canDelete={canDeleteArtifact} />
-          <IocSection caseId={c.id} />
-          <AssetSection caseId={c.id} />
-          <TtpSection caseId={c.id} />
-          <CaseLinkSection caseId={c.caseId} currentCaseUuid={c.id} />
-        </div>
       </aside>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Right: Summary / Timeline tabs                                      */}
+      {/* Right: Summary / Details / Timeline tabs                            */}
       {/* ------------------------------------------------------------------ */}
       <main className="flex-1 min-w-0">
         <CaseDetailTabs defaultTab={defaultTab}>
@@ -309,7 +334,8 @@ export default async function CaseDetailPage({
                 tlp={c.tlp}
                 classificationCustom={c.classificationCustom}
                 status={c.status}
-                category={c.category}
+                incidentSource={c.incidentSource}
+                incidentSourceCustom={c.incidentSourceCustom}
                 createdAt={c.createdAt.toISOString()}
                 closedAt={c.closedAt?.toISOString() ?? null}
                 blufSummary={c.blufSummary ?? null}
@@ -323,8 +349,43 @@ export default async function CaseDetailPage({
                 isShareableLink={shareableLink}
               />
             ),
+            details: (
+              <div>
+                {/* Incident Details — first, core operational metadata */}
+                <IncidentDetailsSection
+                  caseId={c.id}
+                  incidentStartedAt={c.incidentStartedAt?.toISOString() ?? null}
+                  incidentEndedAt={c.incidentEndedAt?.toISOString() ?? null}
+                  incidentDetectedAt={c.incidentDetectedAt?.toISOString() ?? null}
+                  incidentReportedAt={c.incidentReportedAt?.toISOString() ?? null}
+                  detectionSource={c.detectionSource ?? null}
+                  attackVector={c.attackVector ?? null}
+                  affectedNetwork={c.affectedNetwork ?? null}
+                  missionImpact={c.missionImpact ?? null}
+                  reportingRequired={c.reportingRequired}
+                  externalTicketId={c.externalTicketId ?? null}
+                />
+
+                <ArtifactPanel caseId={c.id} canDelete={canDeleteArtifact} readonly={!canWrite} />
+                <IocSection caseId={c.id} readonly={!canWrite} />
+                <AssetSection caseId={c.id} readonly={!canWrite} />
+                <TtpSection caseId={c.id} readonly={!canWrite} />
+                <CaseLinkSection caseId={c.caseId} currentCaseUuid={c.id} readonly={!canWrite} />
+
+                {/* Access Control — TEAM_LEAD/ADMIN only, collapsible */}
+                {canManageAccess && (
+                  <CollapsibleSection
+                    title="Access Control"
+                    count={permissionCount}
+                    defaultOpen={permissionCount > 0}
+                  >
+                    <AccessPanel caseUuid={c.id} />
+                  </CollapsibleSection>
+                )}
+              </div>
+            ),
             timeline: (
-              <CaseTimeline caseId={c.id} initialEntries={initialEntries} />
+              <CaseTimeline caseId={c.id} initialEntries={initialEntries} canWrite={canWrite} />
             ),
           }}
         </CaseDetailTabs>

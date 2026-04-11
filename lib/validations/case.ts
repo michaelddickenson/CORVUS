@@ -1,12 +1,13 @@
 import { z } from "zod";
-import { IncidentCat, ImpactLevel, Category, TLP, Status, Team, AttackVector, MissionImpact } from "@prisma/client";
+import { IncidentCat, ImpactLevel, IncidentSource, TLP, Status, Team, AttackVector, MissionImpact } from "@prisma/client";
 
 export const createCaseSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().min(1).max(10000),
   cat: z.nativeEnum(IncidentCat).default("CAT_8"),
   impactLevel: z.nativeEnum(ImpactLevel).default("LOW"),
-  category: z.nativeEnum(Category),
+  incidentSource: z.nativeEnum(IncidentSource).default("UNKNOWN"),
+  incidentSourceCustom: z.string().max(200).optional().nullable(),
   tlp: z.nativeEnum(TLP).default("GREEN"),
   classificationCustom: z.string().max(200).optional().nullable(),
   assignedToId: z.string().uuid().optional().nullable(),
@@ -51,9 +52,12 @@ export type AddNoteInput = z.infer<typeof addNoteSchema>;
 export type EscalateInput = z.infer<typeof escalateSchema>;
 
 // Valid forward (and back) transitions — TRIAGED removed
+// ON_HOLD and TICKET are not in the sequential flow — only reachable via override dropdown
 export const VALID_TRANSITIONS: Record<Status, Status[]> = {
   NEW:            [Status.IN_PROGRESS],
   IN_PROGRESS:    [Status.PENDING_REVIEW],
   PENDING_REVIEW: [Status.IN_PROGRESS, Status.CLOSED], // IN_PROGRESS = send back
   CLOSED:         [], // terminal
+  ON_HOLD:        [],
+  TICKET:         [],
 };

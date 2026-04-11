@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { IncidentCat, ImpactLevel, Status, Category, TLP, Team } from "@prisma/client";
+import { IncidentCat, ImpactLevel, Status, IncidentSource, TLP, Team } from "@prisma/client";
 import { CatBadge } from "@/components/ui/CatBadge";
 import { ImpactBadge } from "@/components/ui/ImpactBadge";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -22,7 +22,8 @@ interface CaseRow {
   cat:                   IncidentCat | null;
   impactLevel:           ImpactLevel | null;
   status:                Status;
-  category:              Category | null;
+  incidentSource:        IncidentSource | null;
+  incidentSourceCustom:  string | null;
   tlp:                   TLP;
   classificationCustom:  string | null;
   assignedTo:            { id: string; name: string } | null;
@@ -57,22 +58,30 @@ const STATUS_OPTIONS: { value: Status; label: string }[] = [
   { value: "IN_PROGRESS",    label: "In Progress"    },
   { value: "PENDING_REVIEW", label: "Pending Review" },
   { value: "CLOSED",         label: "Closed"         },
+  { value: "ON_HOLD",        label: "On Hold"        },
+  { value: "TICKET",         label: "Ticket"         },
 ];
 
-const CATEGORY_OPTIONS: { value: Category; label: string }[] = [
-  { value: "MALWARE",            label: "Malware"            },
-  { value: "INTRUSION",          label: "Intrusion"          },
-  { value: "PHISHING",           label: "Phishing"           },
-  { value: "INSIDER_THREAT",     label: "Insider Threat"     },
-  { value: "NONCOMPLIANCE",      label: "Non-Compliance"     },
-  { value: "VULNERABILITY",      label: "Vulnerability"      },
-  { value: "ANOMALOUS_ACTIVITY", label: "Anomalous Activity" },
-  { value: "OTHER",              label: "Other"              },
+const INCIDENT_SOURCE_OPTIONS: { value: IncidentSource; label: string }[] = [
+  { value: "EXTERNAL_THREAT", label: "External Threat"            },
+  { value: "INSIDER_THREAT",  label: "Insider Threat"             },
+  { value: "THIRD_PARTY",     label: "Third Party / Supply Chain" },
+  { value: "UNKNOWN",         label: "Unknown"                    },
+  { value: "OTHER",           label: "Other"                      },
 ];
 
-const categoryLabel: Record<Category, string> = Object.fromEntries(
-  CATEGORY_OPTIONS.map((o) => [o.value, o.label])
-) as Record<Category, string>;
+const incidentSourceLabel: Record<IncidentSource, string> = Object.fromEntries(
+  INCIDENT_SOURCE_OPTIONS.map((o) => [o.value, o.label])
+) as Record<IncidentSource, string>;
+
+// Short labels for the table column
+const INCIDENT_SOURCE_SHORT: Record<IncidentSource, string> = {
+  EXTERNAL_THREAT: "External",
+  INSIDER_THREAT:  "Insider",
+  THIRD_PARTY:     "3rd Party",
+  UNKNOWN:         "Unknown",
+  OTHER:           "Other",
+};
 
 function formatUtc(iso: string) {
   return new Date(iso).toISOString().replace("T", " ").slice(0, 16) + " UTC";
@@ -161,7 +170,7 @@ export function CaseQueue() {
   const [cats,        setCats]        = useState<IncidentCat[]>(() => searchParams.getAll("cat")    as IncidentCat[]);
   const [impacts,     setImpacts]     = useState<ImpactLevel[]>(() => searchParams.getAll("impact") as ImpactLevel[]);
   const [statuses,    setStatuses]    = useState<Status[]>      (() => searchParams.getAll("status")   as Status[]);
-  const [categories,  setCategories]  = useState<Category[]>    (() => searchParams.getAll("category") as Category[]);
+  const [incidentSources, setIncidentSources] = useState<IncidentSource[]>(() => searchParams.getAll("incidentSource") as IncidentSource[]);
   const [assignedTo,  setAssignedTo]  = useState(() => searchParams.get("assignedTo") ?? "");
   const [ttpId,       setTtpId]       = useState(() => searchParams.get("ttpId")       ?? "");
   const [createdFrom, setCreatedFrom] = useState(() => searchParams.get("createdFrom") ?? "");
@@ -189,27 +198,27 @@ export function CaseQueue() {
   // Build URL params from current filter state
   function buildParams(overrides?: Partial<{
     search: string; cats: IncidentCat[]; impacts: ImpactLevel[]; statuses: Status[];
-    categories: Category[]; assignedTo: string; ttpId: string;
+    incidentSources: IncidentSource[]; assignedTo: string; ttpId: string;
     createdFrom: string; createdTo: string; sortBy: SortField; sortDir: "asc" | "desc";
   }>) {
-    const s   = overrides?.search      ?? search;
-    const ct  = overrides?.cats        ?? cats;
-    const imp = overrides?.impacts     ?? impacts;
-    const st  = overrides?.statuses    ?? statuses;
-    const ca  = overrides?.categories  ?? categories;
-    const at  = overrides?.assignedTo  ?? assignedTo;
-    const tp  = overrides?.ttpId       ?? ttpId;
-    const cf  = overrides?.createdFrom ?? createdFrom;
-    const cto = overrides?.createdTo   ?? createdTo;
-    const sb  = overrides?.sortBy      ?? sortBy;
-    const sd  = overrides?.sortDir     ?? sortDir;
+    const s   = overrides?.search          ?? search;
+    const ct  = overrides?.cats            ?? cats;
+    const imp = overrides?.impacts         ?? impacts;
+    const st  = overrides?.statuses        ?? statuses;
+    const src = overrides?.incidentSources ?? incidentSources;
+    const at  = overrides?.assignedTo      ?? assignedTo;
+    const tp  = overrides?.ttpId           ?? ttpId;
+    const cf  = overrides?.createdFrom     ?? createdFrom;
+    const cto = overrides?.createdTo       ?? createdTo;
+    const sb  = overrides?.sortBy          ?? sortBy;
+    const sd  = overrides?.sortDir         ?? sortDir;
 
     const params = new URLSearchParams();
     if (s)   params.set("search", s);
     ct.forEach((v)  => params.append("cat", v));
     imp.forEach((v) => params.append("impact", v));
     st.forEach((v)  => params.append("status", v));
-    ca.forEach((v)  => params.append("category", v));
+    src.forEach((v) => params.append("incidentSource", v));
     if (at)  params.set("assignedTo", at);
     if (tp)  params.set("ttpId", tp);
     if (cf)  params.set("createdFrom", cf);
@@ -240,7 +249,7 @@ export function CaseQueue() {
     const params = buildParams();
     syncAndFetch(params);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cats, impacts, statuses, categories, assignedTo, ttpId, createdFrom, createdTo, sortBy, sortDir]);
+  }, [cats, impacts, statuses, incidentSources, assignedTo, ttpId, createdFrom, createdTo, sortBy, sortDir]);
 
   // Effect for search (debounced)
   useEffect(() => {
@@ -270,17 +279,17 @@ export function CaseQueue() {
   }
 
   function clearAll() {
-    setSearch(""); setCats([]); setImpacts([]); setStatuses([]); setCategories([]);
+    setSearch(""); setCats([]); setImpacts([]); setStatuses([]); setIncidentSources([]);
     setAssignedTo(""); setTtpId(""); setCreatedFrom(""); setCreatedTo("");
   }
 
   const hasFilters =
-    search || cats.length || impacts.length || statuses.length || categories.length ||
+    search || cats.length || impacts.length || statuses.length || incidentSources.length ||
     assignedTo || ttpId || createdFrom || createdTo;
 
   const assignedToName = users.find((u) => u.id === assignedTo)?.name ?? assignedTo;
 
-  const COLS = 9;
+  const COLS = 10;
 
   return (
     <div>
@@ -299,7 +308,7 @@ export function CaseQueue() {
         <FilterMultiSelect label="CAT"    options={CAT_OPTIONS}      value={cats}       onChange={setCats}       />
         <FilterMultiSelect label="Impact" options={IMPACT_OPTIONS}   value={impacts}    onChange={setImpacts}    />
         <FilterMultiSelect label="Status" options={STATUS_OPTIONS}   value={statuses}   onChange={setStatuses}   />
-        <FilterMultiSelect label="Type"   options={CATEGORY_OPTIONS} value={categories} onChange={setCategories} />
+        <FilterMultiSelect label="Source" options={INCIDENT_SOURCE_OPTIONS} value={incidentSources} onChange={setIncidentSources} />
 
         {/* Assigned to */}
         <select
@@ -348,8 +357,8 @@ export function CaseQueue() {
           {statuses.map((s) => (
             <Chip key={s} label={`Status: ${s.replace(/_/g, " ")}`} onRemove={() => setStatuses((prev) => prev.filter((x) => x !== s))} />
           ))}
-          {categories.map((c) => (
-            <Chip key={c} label={`Type: ${categoryLabel[c]}`} onRemove={() => setCategories((prev) => prev.filter((x) => x !== c))} />
+          {incidentSources.map((s) => (
+            <Chip key={s} label={`Source: ${incidentSourceLabel[s]}`} onRemove={() => setIncidentSources((prev) => prev.filter((x) => x !== s))} />
           ))}
           {assignedTo && (
             <Chip label={`Assigned: ${assignedToName}`} onRemove={() => setAssignedTo("")} />
@@ -389,6 +398,9 @@ export function CaseQueue() {
                 onClick={() => toggleSort("cat")}
               >
                 CAT <SortIndicator field="cat" />
+              </th>
+              <th className="text-left px-3 py-2 text-neutral-400 font-medium w-24 text-xs">
+                Source
               </th>
               <th className="text-left px-3 py-2 text-neutral-400 font-medium w-20 text-xs">
                 Impact
@@ -471,6 +483,13 @@ export function CaseQueue() {
                   </td>
                   <td className="px-3 py-0">
                     {row.cat ? <CatBadge cat={row.cat} /> : null}
+                  </td>
+                  <td className="px-3 py-0 text-xs text-neutral-400 whitespace-nowrap">
+                    {row.incidentSource
+                      ? row.incidentSource === "OTHER"
+                        ? (row.incidentSourceCustom || "Other")
+                        : INCIDENT_SOURCE_SHORT[row.incidentSource]
+                      : <span className="text-neutral-600">—</span>}
                   </td>
                   <td className="px-3 py-0">
                     {row.impactLevel ? <ImpactBadge level={row.impactLevel} /> : null}

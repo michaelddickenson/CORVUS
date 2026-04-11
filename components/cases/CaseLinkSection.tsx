@@ -22,7 +22,7 @@ interface LinkRow {
   note:      string | null;
 }
 
-export function CaseLinkSection({ caseId: _caseId, currentCaseUuid }: { caseId: string; currentCaseUuid: string }) {
+export function CaseLinkSection({ caseId: _caseId, currentCaseUuid, readonly }: { caseId: string; currentCaseUuid: string; readonly?: boolean }) {
   const [links,  setLinks]  = useState<LinkRow[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -95,9 +95,9 @@ export function CaseLinkSection({ caseId: _caseId, currentCaseUuid }: { caseId: 
 
   return (
     <CollapsibleSection title="Linked Cases" count={loaded ? links.length : null}>
-      <div className="space-y-1.5 mb-3">
+      <div className="space-y-1.5 mb-3 overflow-x-hidden">
         {links.map((link) => (
-          <div key={link.id} className="flex items-center gap-2 group text-xs">
+          <div key={link.id} className="flex items-center gap-2 group text-xs min-w-0">
             <Link
               href={`/cases/${link.otherCase.id}`}
               className="font-mono text-blue-400 hover:text-blue-300 hover:underline flex-shrink-0"
@@ -107,7 +107,7 @@ export function CaseLinkSection({ caseId: _caseId, currentCaseUuid }: { caseId: 
             <span className="text-neutral-300 truncate flex-1 min-w-0">{link.otherCase.title}</span>
             <CatBadge cat={link.otherCase.cat as IncidentCat} />
             <StatusBadge status={link.otherCase.status as Status} />
-            <button
+            {!readonly && <button
               onClick={() => handleUnlink(link.id)}
               className="flex-shrink-0 text-neutral-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-colors"
               title="Remove link"
@@ -115,7 +115,7 @@ export function CaseLinkSection({ caseId: _caseId, currentCaseUuid }: { caseId: 
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </button>}
           </div>
         ))}
         {loaded && links.length === 0 && (
@@ -123,7 +123,7 @@ export function CaseLinkSection({ caseId: _caseId, currentCaseUuid }: { caseId: 
         )}
       </div>
 
-      <div className="space-y-1.5 relative">
+      {!readonly && <div className="space-y-1.5 relative">
         <input
           type="text"
           value={query}
@@ -166,7 +166,7 @@ export function CaseLinkSection({ caseId: _caseId, currentCaseUuid }: { caseId: 
           </button>
         </div>
         {formError && <p className="text-xs text-red-400">{formError}</p>}
-      </div>
+      </div>}
     </CollapsibleSection>
   );
 }

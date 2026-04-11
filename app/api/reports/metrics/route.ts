@@ -62,12 +62,12 @@ export async function GET(req: NextRequest) {
       }
     : {};
 
-  // CAT, impact, status, category distributions
-  const [byCat, byImpactLevel, byStatus, byCategory] = await Promise.all([
-    prisma.case.groupBy({ by: ["cat"],         _count: { _all: true }, where: scopedWhere }),
-    prisma.case.groupBy({ by: ["impactLevel"], _count: { _all: true }, where: scopedWhere }),
-    prisma.case.groupBy({ by: ["status"],      _count: { _all: true }, where: scopedWhere }),
-    prisma.case.groupBy({ by: ["category"],    _count: { _all: true }, where: scopedWhere }),
+  // CAT, impact, status, incidentSource distributions
+  const [byCat, byImpactLevel, byStatus, byIncidentSource] = await Promise.all([
+    prisma.case.groupBy({ by: ["cat"],            _count: { _all: true }, where: scopedWhere }),
+    prisma.case.groupBy({ by: ["impactLevel"],    _count: { _all: true }, where: scopedWhere }),
+    prisma.case.groupBy({ by: ["status"],         _count: { _all: true }, where: scopedWhere }),
+    prisma.case.groupBy({ by: ["incidentSource"], _count: { _all: true }, where: scopedWhere }),
   ]);
 
   // Avg time-to-close (hours)
@@ -186,7 +186,7 @@ export async function GET(req: NextRequest) {
     byCat:         Object.fromEntries(byCat.map((r)         => [r.cat,         r._count._all])),
     byImpactLevel: Object.fromEntries(byImpactLevel.map((r) => [r.impactLevel, r._count._all])),
     byStatus:      Object.fromEntries(byStatus.map((r)      => [r.status,      r._count._all])),
-    byCategory:    Object.fromEntries(byCategory.map((r)    => [r.category,    r._count._all])),
+    byIncidentSource: Object.fromEntries(byIncidentSource.map((r) => [r.incidentSource, r._count._all])),
     avgCloseHours,
     perWeek:    perBucket, // backward compat
     perBucket,

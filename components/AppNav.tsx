@@ -63,6 +63,14 @@ function IconCog({ className }: { className?: string }) {
   );
 }
 
+function IconIoc({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+    </svg>
+  );
+}
+
 function IconChart({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -252,15 +260,17 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: IconDashboard },
-  { href: "/cases",     label: "Cases",     icon: IconFolder    },
-  { href: "/reports",   label: "Reports",   icon: IconChart     },
+  { href: "/dashboard", label: "Dashboard",   icon: IconDashboard },
+  { href: "/cases",     label: "Cases",       icon: IconFolder    },
+  { href: "/iocs",      label: "IOC Manager", icon: IconIoc       },
+  { href: "/reports",   label: "Reports",     icon: IconChart     },
 ];
 
 const adminNavItems: NavItem[] = [
-  { href: "/admin",       label: "Overview",  icon: IconCog       },
-  { href: "/admin/users", label: "Users",     icon: IconUsers     },
-  { href: "/admin/audit", label: "Audit Log", icon: IconClipboard },
+  { href: "/admin",        label: "Overview",      icon: IconCog       },
+  { href: "/admin/users",  label: "Users",          icon: IconUsers     },
+  { href: "/admin/audit",  label: "Audit Log",      icon: IconClipboard },
+  { href: "/admin/config", label: "Configuration",  icon: IconCog       },
 ];
 
 // ---------------------------------------------------------------------------
@@ -334,7 +344,7 @@ export function AppSidebar({ unreadCount = 0 }: { unreadCount?: number }) {
             );
           })}
 
-          {/* Admin section — ADMIN role only */}
+          {/* Admin section — ADMIN role only (not shown to OBSERVER) */}
           {userRole === Role.ADMIN && (
             <div className={collapsed ? "pt-3" : "pt-3"}>
               {!collapsed && (
@@ -426,7 +436,9 @@ export function AppSidebar({ unreadCount = 0 }: { unreadCount?: number }) {
           {!collapsed && session?.user && (
             <div className="px-2.5 py-2 mb-1">
               <p className="text-white text-xs font-medium truncate">{session.user.name}</p>
-              <p className="text-neutral-500 text-xs truncate">{session.user.role}</p>
+              <p className={`text-xs truncate ${session.user.role === "OBSERVER" ? "text-amber-600" : "text-neutral-500"}`}>
+                {session.user.role === "OBSERVER" ? "OBSERVER (read-only)" : session.user.role}
+              </p>
             </div>
           )}
           <button

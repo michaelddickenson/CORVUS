@@ -33,7 +33,7 @@ function confidenceLabel(n: number): { label: string; cls: string } {
   return         { label: "LOW",   cls: "text-neutral-400 bg-neutral-800 border-neutral-700" };
 }
 
-export function IocSection({ caseId }: { caseId: string }) {
+export function IocSection({ caseId, readonly }: { caseId: string; readonly?: boolean }) {
   const [iocs, setIocs] = useState<IocRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [collisions, setCollisions] = useState<CollisionCase[]>([]);
@@ -118,7 +118,7 @@ export function IocSection({ caseId }: { caseId: string }) {
                 {conf.label}
               </span>
               <TlpBadge tlp={ioc.tlp} />
-              <button
+              {!readonly && <button
                 onClick={() => handleDelete(ioc.id)}
                 className="flex-shrink-0 text-neutral-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 ml-1"
                 title="Remove IOC"
@@ -126,7 +126,7 @@ export function IocSection({ caseId }: { caseId: string }) {
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
+              </button>}
             </div>
           );
         })}
@@ -135,8 +135,8 @@ export function IocSection({ caseId }: { caseId: string }) {
         )}
       </div>
 
-      {/* Add form */}
-      <div className="space-y-1.5">
+      {/* Add form — hidden for readonly/observer */}
+      {!readonly && <div className="space-y-1.5">
         <div className="flex gap-1.5">
           <select
             value={type}
@@ -186,7 +186,7 @@ export function IocSection({ caseId }: { caseId: string }) {
           className="w-full bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-600 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
         {formError && <p className="text-xs text-red-400">{formError}</p>}
-      </div>
+      </div>}
     </CollapsibleSection>
   );
 }

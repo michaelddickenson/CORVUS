@@ -12,6 +12,9 @@ export async function DELETE(
 ) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role === "OBSERVER") {
+    return NextResponse.json({ error: "Observers may not perform write operations." }, { status: 403 });
+  }
 
   // Role gate: ADMIN or TEAM_LEAD only
   const { role } = session.user;

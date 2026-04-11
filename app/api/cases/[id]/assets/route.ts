@@ -36,9 +36,10 @@ export async function POST(
   const parsed = addAssetSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 });
 
-  const { c, allowed } = await getCaseAccess(params.id, session);
-  if (!c) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { c, allowed, canWrite } = await getCaseAccess(params.id, session);
+  if (!c)        return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!allowed)  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!canWrite) return NextResponse.json({ error: "Observers may not perform write operations." }, { status: 403 });
 
   const asset = await prisma.asset.create({
     data: {

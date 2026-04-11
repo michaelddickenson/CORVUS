@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { IncidentCat, ImpactLevel, Status, TLP, Team, TeamStatus, Role } from "@prisma/client";
+import { IncidentCat, ImpactLevel, IncidentSource, Status, TLP, Team, TeamStatus, Role } from "@prisma/client";
 import { formatDuration } from "@/lib/formatDuration";
 import { CatBadge } from "@/components/ui/CatBadge";
 import { ImpactBadge } from "@/components/ui/ImpactBadge";
@@ -40,7 +40,8 @@ export interface SummaryTabProps {
   tlp:                   TLP;
   classificationCustom?: string | null;
   status:                Status;
-  category:              string;
+  incidentSource:        IncidentSource;
+  incidentSourceCustom?: string | null;
   createdAt:             string;
   closedAt:              string | null;
 
@@ -73,22 +74,19 @@ const ENTRY_TYPE_LABELS: Record<string, string> = {
   RETURNED:      "Returned to Team",
 };
 
-const categoryLabel: Record<string, string> = {
-  MALWARE:            "Malware",
-  INTRUSION:          "Intrusion",
-  PHISHING:           "Phishing",
-  INSIDER_THREAT:     "Insider Threat",
-  NONCOMPLIANCE:      "Non-Compliance",
-  VULNERABILITY:      "Vulnerability",
-  ANOMALOUS_ACTIVITY: "Anomalous Activity",
-  OTHER:              "Other",
+const incidentSourceLabel: Record<IncidentSource, string> = {
+  EXTERNAL_THREAT: "External Threat",
+  INSIDER_THREAT:  "Insider Threat",
+  THIRD_PARTY:     "Third Party / Supply Chain",
+  UNKNOWN:         "Unknown",
+  OTHER:           "Other",
 };
 
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 export function SummaryTab({
-  caseUuid, caseId, title, cat, impactLevel, tlp, classificationCustom, status, category,
+  caseUuid, caseId, title, cat, impactLevel, tlp, classificationCustom, status, incidentSource, incidentSourceCustom,
   createdAt, closedAt,
   blufSummary: initialBluf,
   recommendedActions: initialRecommended,
@@ -188,7 +186,11 @@ export function SummaryTab({
           <span className="text-neutral-700">·</span>
           <ImpactBadge level={impactLevel} />
           <span className="text-neutral-700">·</span>
-          <span className="text-xs text-neutral-400">{categoryLabel[category] ?? category}</span>
+          <span className="text-xs text-neutral-400">
+            {incidentSource === "OTHER" && incidentSourceCustom
+              ? incidentSourceCustom
+              : (incidentSourceLabel[incidentSource] ?? incidentSource)}
+          </span>
         </div>
 
         {/* Time metrics */}
